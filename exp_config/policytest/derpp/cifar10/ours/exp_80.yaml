@@ -1,0 +1,25 @@
+parameters:
+  agent_name: derpp
+  alpha: 0.2
+  batch_size: 32
+  beta: 0.5
+  data_order: sorted
+  epochs: 50
+  filename: ratio_80
+  lr: 0.03
+  mode: disjoint
+  model: der_resnet
+  num_task_cls_per_task:
+  - 5
+  - 2
+  num_workers: 1
+  rb_path: ../../data/cl_saved_data/policytest/derpp/cifar10/ours/ratio_80
+  rb_size: 500
+  result_save_path: exp_results/policytest/derpp/cifar10/ours
+  run: 5
+  sampling: reservoir_der
+  seed_start: 0
+  swap: true
+  swap_base: hybrid_ratio
+  test_set: cifar10
+  threshold: 0.8

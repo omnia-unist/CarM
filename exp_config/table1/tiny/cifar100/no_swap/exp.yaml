@@ -1,0 +1,18 @@
+parameters:
+  agent_name: tiny
+  batch_size: 10
+  data_order: seed
+  epochs: 1
+  mode: disjoint
+  model: tiny_resnet
+  num_task_cls_per_task:
+  - 20
+  - 5
+  num_workers: 1
+  rb_size: 300
+  result_save_path: /home/XXXXX/swap_replay/streaming/exp_results/table1/tiny/cifar100/no_swap
+  run: 5
+  sampling: reservoir
+  seed_start: 1234
+  swap: false
+  test_set: cifar100

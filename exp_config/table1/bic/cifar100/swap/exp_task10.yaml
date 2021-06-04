@@ -1,0 +1,21 @@
+parameters:
+  agent_name: bic
+  batch_size: 128
+  data_order: fixed
+  epochs: 250
+  mode: disjoint
+  model: resnet32
+  num_task_cls_per_task:
+  - 10
+  - 10
+  num_workers: 1
+  rb_path: /data/cl_saved_data/table1/bic/cifar100/swap
+  rb_size: 2000
+  result_save_path: /home/XXXXX/swap_replay/streaming/exp_results/table1/bic/cifar100/swap
+  run: 5
+  sampling: ringbuffer
+  filename: task10_
+  seed_start: null
+  store_ratio: 1
+  swap: true
+  test_set: cifar100

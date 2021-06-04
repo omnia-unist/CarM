@@ -1,0 +1,20 @@
+parameters:
+  agent_name: bic
+  batch_size: 256
+  data_order: fixed
+  epochs: 100
+  mode: disjoint
+  model: resnet18
+  num_task_cls_per_task:
+  - 10
+  - 10
+  num_workers: 1
+  rb_path: /data/cl_saved_data/table1/bic/imagenet100/swap
+  rb_size: 2000
+  result_save_path: /home/XXXXX/swap_replay/streaming/exp_results/table1/bic/imagenet100/swap
+  run: 3
+  sampling: ringbuffer
+  seed_start: null
+  store_ratio: 1
+  swap: true
+  test_set: imagenet100

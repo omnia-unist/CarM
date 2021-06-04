@@ -1,0 +1,22 @@
+parameters:
+  agent_name: gdumb
+  batch_size: 16
+  data_order: fixed
+  epochs: 256
+  filename: ratio_50
+  mode: disjoint
+  model: resnet18
+  num_task_cls_per_task:
+  - 5
+  - 2
+  num_workers: 4
+  rb_path: ../../data/cl_saved_data/policytest/gdumb/cifar10/hybrid_ratio/ratio_50
+  rb_size: 500
+  result_save_path: exp_results/policytest/gdumb/cifar10/hybrid_ratio
+  run: 1
+  sampling: greedy_balance
+  seed_start: 0
+  swap: true
+  swap_base: hybrid_ratio
+  test_set: cifar10
+  threshold: 0.5

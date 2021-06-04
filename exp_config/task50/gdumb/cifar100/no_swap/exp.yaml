@@ -1,0 +1,20 @@
+parameters:
+  agent_name: gdumb
+  batch_size: 16
+  data_order: fixed
+  epochs: 256
+  mode: disjoint
+  model: resnet18
+  num_task_cls_per_task:
+  - 50
+  - 2
+  num_workers: 2
+  rb_path: ../../data/cl_saved_data/task50/gdumb/cifar100/no_swap
+  rb_size: 500
+  result_save_path: exp_results/task50/gdumb/cifar100/no_swap
+  run: 1
+  sampling: greedy_balance
+  seed_start: 0
+  swap: false
+  test_set: cifar100
+  threshold: 0.5

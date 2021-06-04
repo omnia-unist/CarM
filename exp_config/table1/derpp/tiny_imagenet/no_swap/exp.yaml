@@ -1,0 +1,21 @@
+parameters:
+  agent_name: derpp
+  alpha: 0.1
+  batch_size: 32
+  beta: 1.0
+  data_order: sorted
+  epochs: 100
+  lr: 0.03
+  mode: disjoint
+  model: der_resnet
+  num_task_cls_per_task:
+  - 10
+  - 20
+  num_workers: 1
+  rb_size: 500
+  result_save_path: /home/XXXXX/swap_replay/streaming/exp_results/table1/derpp/tiny_imagenet/no_swap
+  run: 3
+  sampling: reservoir_der
+  seed_start: 0
+  swap: false
+  test_set: tiny_imagenet

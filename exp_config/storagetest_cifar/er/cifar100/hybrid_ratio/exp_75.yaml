@@ -1,0 +1,23 @@
+parameters:
+  agent_name: er
+  batch_size: 128
+  data_order: fixed
+  epochs: 70
+  filename: store_ratio_75
+  mode: disjoint
+  model: resnet32
+  num_task_cls_per_task:
+  - 10
+  - 10
+  num_workers: 1
+  rb_path: ../../data/cl_saved_data/storagetest_cifar/er/cifar100/hybrid_ratio/ratio_75
+  rb_size: 2000
+  result_save_path: exp_results/storagetest_cifar/er/cifar100/hybrid_ratio
+  run: 1
+  sampling: ringbuffer
+  seed_start: null
+  store_ratio: 0.75
+  swap: true
+  swap_base: hybrid_ratio
+  test_set: cifar100
+  threshold: 0.5

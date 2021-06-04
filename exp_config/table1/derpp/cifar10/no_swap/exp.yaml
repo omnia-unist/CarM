@@ -1,0 +1,21 @@
+parameters:
+  agent_name: derpp
+  alpha: 0.2
+  batch_size: 32
+  beta: 0.5
+  data_order: sorted
+  epochs: 50
+  lr: 0.03
+  mode: disjoint
+  model: der_resnet
+  num_task_cls_per_task:
+  - 5
+  - 2
+  num_workers: 1
+  rb_size: 500
+  result_save_path: /home/XXXXX/swap_replay/streaming/exp_results/table1/derpp/cifar10/no_swap
+  run: 5
+  sampling: reservoir_der
+  seed_start: 0
+  swap: false
+  test_set: cifar10

@@ -1,0 +1,23 @@
+parameters:
+  agent_name: bic
+  batch_size: 128
+  data_order: fixed
+  epochs: 250
+  filename: ratio_20
+  mode: disjoint
+  model: resnet32
+  num_task_cls_per_task:
+  - 10
+  - 10
+  num_workers: 1
+  rb_path: ../../data/cl_saved_data/policytest/bic/cifar100/ours/ratio_20
+  rb_size: 2000
+  result_save_path: exp_results/policytest/bic/cifar100/ours
+  run: 5
+  sampling: ringbuffer
+  seed_start: null
+  store_ratio: 1
+  swap: true
+  swap_base: hybrid_ratio
+  test_set: cifar100
+  threshold: 0.2

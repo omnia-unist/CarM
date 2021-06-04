@@ -1,0 +1,22 @@
+parameters:
+  agent_name: rm
+  batch_size: 16
+  data_order: fixed
+  epochs: 256
+  filename: buffer_300
+  mode: disjoint
+  model: resnet18
+  num_task_cls_per_task:
+  - 5
+  - 2
+  num_workers: 1
+  rb_path: ../../data/cl_saved_data/buffertest/rm/cifar10/hybrid_ratio
+  rb_size: 300
+  result_save_path: exp_results/buffertest/rm/cifar10/hybrid_ratio
+  run: 1
+  sampling: greedy_balance
+  seed_start: 0
+  swap: true
+  swap_base: hybrid_ratio
+  test_set: cifar10
+  threshold: 0.5

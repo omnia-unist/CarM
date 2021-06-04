@@ -1,0 +1,19 @@
+parameters:
+  agent_name: tiny
+  batch_size: 10
+  data_order: seed
+  epochs: 1
+  mode: disjoint
+  model: resnet18
+  num_task_cls_per_task:
+  - 20
+  - 5
+  num_workers: 1
+  rb_path: /data/cl_saved_data/table1/tiny/mini_imagenet/swap
+  rb_size: 500
+  result_save_path: /home/XXXXX/swap_replay/streaming/exp_results/table1/tiny/mini_imagenet/swap
+  run: 3
+  sampling: reservoir
+  seed_start: 1234
+  swap: true
+  test_set: mini_imagenet

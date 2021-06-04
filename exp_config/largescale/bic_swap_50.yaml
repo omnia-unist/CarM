@@ -1,0 +1,21 @@
+parameters:
+  agent_name: bic
+  batch_size: 256
+  data_order: fixed
+  epochs: 100
+  mode: disjoint
+  model: resnet18
+  num_task_cls_per_task:
+  - 10
+  - 100
+  num_workers: 4
+  rb_size: 20000
+  rb_path: /data/largescale/bic_swap_50
+  result_save_path: exp_results/largescale/bic_swap_50
+  run: 1
+  sampling: ringbuffer
+  seed_start: 0
+  swap: true
+  swap_base: hybrid_ratio
+  test_set: imagenet1000
+  threshold: 0.5

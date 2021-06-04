@@ -1,0 +1,19 @@
+parameters:
+  agent_name: icarl
+  batch_size: 128
+  data_order: fixed
+  epochs: 60
+  mode: disjoint
+  model: resnet18
+  num_task_cls_per_task:
+  - 10
+  - 10
+  num_workers: 1
+  rb_path: /data/cl_saved_data/table1/icarl/imagenet100/swap
+  rb_size: 2000
+  result_save_path: /home/XXXXX/swap_replay/streaming/exp_results/table1/icarl/imagenet100/swap
+  run: 3
+  sampling: herding
+  seed_start: null
+  swap: true
+  test_set: imagenet100

@@ -1,0 +1,22 @@
+parameters:
+  agent_name: gdumb
+  batch_size: 16
+  data_order: sorted
+  epochs: 128
+  mode: disjoint
+  model: densenet
+  num_task_cls_per_task:
+  - 10
+  - 20
+  num_workers: 1
+  rb_path: /data/cl_saved_data/table1/gdumb/tiny_imagenet/p_swap
+  rb_size: 4500
+  result_save_path: exp_results/table1/gdumb/tiny_imagenet/p_swap
+  run: 3
+  sampling: greedy_balance
+  task_inc: True
+  seed_start: 0
+  swap: true
+  swap_base: hybrid_ratio
+  test_set: tiny_imagenet
+  threshold: 0.5
