@@ -1,0 +1,21 @@
+parameters:
+  agent_name: icarl_distill
+  alpha: 0.5
+  batch_size: 128
+  data_order: fixed
+  epochs: 60
+  filename: icarl_distill_0.5_no_swap_
+  get_test_entropy: true
+  mode: disjoint
+  model: resnet18
+  num_task_cls_per_task:
+  - 10
+  - 10
+  num_workers: 3
+  rb_size: 2000
+  result_save_path: exp_results/icarl_distill
+  run: 1
+  sampling: herding
+  seed_start: 0
+  swap: False
+  test_set: imagenet100

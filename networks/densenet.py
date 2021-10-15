@@ -154,7 +154,9 @@ class DenseNet(nn.Module):
 
     def forward(self, x):
         features = self.features(x)
+        #print(features.shape)
         out = F.relu(features, inplace=True)
+        #print(out.shape)
         out = F.avg_pool2d(out, kernel_size=self.avgpool_size).view(features.size(0), -1)
-        #out = self.final(out)
+        #print(out.shape)
         return out

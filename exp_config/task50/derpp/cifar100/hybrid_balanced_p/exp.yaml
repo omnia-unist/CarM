@@ -1,0 +1,24 @@
+parameters:
+  agent_name: derpp
+  alpha: 0.2
+  batch_size: 32
+  beta: 0.5
+  data_order: sorted
+  epochs: 50
+  lr: 0.03
+  mode: disjoint
+  model: der_resnet
+  num_task_cls_per_task:
+  - 50
+  - 2
+  num_workers: 2
+  rb_path: ../../data/cl_saved_data/task50/derpp/cifar100/hybrid_balanced_p
+  rb_size: 500
+  result_save_path: exp_results/task50/derpp/cifar100/hybrid_balanced_p
+  run: 1
+  sampling: reservoir_der
+  seed_start: 0
+  swap: true
+  swap_base: hybrid_balanced_p
+  test_set: cifar100
+  threshold: 0.5

@@ -1,0 +1,20 @@
+parameters:
+  agent_name: rm
+  batch_size: 16
+  data_order: sorted
+  epochs: 128
+  mode: disjoint
+  model: densenet
+  num_task_cls_per_task:
+  - 10
+  - 20
+  num_workers: 2
+  rb_path: /data/cl_saved_data/table1/rm/tiny_imagenet/swap
+  rb_size: 4500
+  result_save_path: /home/xxxxxxxxx/swap_replay/streaming/exp_results/table1/rm/tiny_imagenet/swap
+  run: 3
+  sampling: greedy_balance
+  task_inc: True
+  seed_start: 0
+  swap: true
+  test_set: tiny_imagenet

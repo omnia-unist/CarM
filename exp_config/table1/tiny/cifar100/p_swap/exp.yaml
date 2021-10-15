@@ -8,11 +8,12 @@ parameters:
   num_task_cls_per_task:
   - 20
   - 5
-  num_workers: 1
-  rb_path: /data/cl_saved_data/table1/tiny/cifar100/p_swap
+  num_workers: 2
+  swap_workers: 0
+  rb_path: ../../data/cl_saved_data/table1/tiny/cifar100/p_swap_b_p
   rb_size: 300
   result_save_path: exp_results/table1/tiny/cifar100/p_swap
-  run: 5
+  run: 1
   sampling: reservoir
   seed_start: 1234
   swap: true

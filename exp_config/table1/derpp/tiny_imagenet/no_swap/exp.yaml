@@ -1,5 +1,6 @@
 parameters:
   agent_name: derpp
+  filename: run2_
   alpha: 0.1
   batch_size: 32
   beta: 1.0
@@ -11,11 +12,11 @@ parameters:
   num_task_cls_per_task:
   - 10
   - 20
-  num_workers: 1
+  num_workers: 3
   rb_size: 500
-  result_save_path: /home/XXXXX/swap_replay/streaming/exp_results/table1/derpp/tiny_imagenet/no_swap
+  result_save_path: /home/xxxxxxxxx/swap_replay/streaming/exp_results/table1/derpp/tiny_imagenet/no_swap
   run: 3
   sampling: reservoir_der
-  seed_start: 0
+  seed_start: 2
   swap: false
   test_set: tiny_imagenet

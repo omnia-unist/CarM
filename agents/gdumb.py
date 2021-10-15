@@ -14,8 +14,10 @@ from _utils.sampling import multi_task_sample_update_to_RB
 from lib import utils
 from scipy.spatial.distance import cdist
 import time
+from dataset.dataloader import GDumbDataLoader
 
 import csv
+import gc
 
 class GDumb(Base):
     def __init__(self, model, opt_name, lr, lr_schedule, lr_decay, device, num_epochs, swap,
@@ -26,7 +28,7 @@ class GDumb(Base):
                         test_dataset, filename, **kwargs)
 
         # data loader
-        self.cl_dataloader = cl_dataloader
+        self.cl_dataloader = GDumbDataLoader(stream_dataset, replay_dataset, data_manager, self.cl_dataloader.num_workers, self.cl_dataloader.batch_size, swap)
 
         # variables for evaluation
         self.classes_so_far = 0
@@ -96,6 +98,9 @@ class GDumb(Base):
         self.model.train()
         self.model.to(self.device)
         print("length of replay dataset : ", len(self.replay_dataset))
+        self.replay_size = self.replay_dataset.rb_size
+
+        self.stream_losses, self.replay_losses = list(), list()
 
 
     def after_train(self):
@@ -120,7 +125,7 @@ class GDumb(Base):
             print("incremental_accuracy : ", curr_accuracy)
 
         else:
-            curr_accuracy, task_accuracy, class_accuracy = self.eval()
+            curr_accuracy, task_accuracy, class_accuracy = self.eval(get_entropy=self.get_test_entropy)
 
             print("max_class_accuracy : ", self.max_class_acc)
             print("max_task_accuracy : ", self.max_task_acc)
@@ -154,7 +159,14 @@ class GDumb(Base):
         self.avg_iter_time.append(np.mean(np.array(self.curr_task_iter_time)))
         f.write("avg_iter_time : "+str(self.avg_iter_time)+"\n")
         f.close()
+        if self.get_loss is True:
+            f = open(self.result_save_path + self.filename + '_replay_loss.txt','a')
+            f.write(str(self.replay_losses)+"\n")
+            f.close()
 
+            f = open(self.result_save_path + self.filename + '_stream_loss.txt','a')
+            f.write(str(self.stream_losses)+"\n")
+            f.close()
         
         
         
@@ -176,6 +188,9 @@ class GDumb(Base):
 
         # reset model parameters
         self.model.apply(self.weight_reset)
+
+        self.stream_dataset.clean_stream_dataset()
+        gc.collect()
     
     def train(self):
         # skips task training to reach a specific task
@@ -199,6 +214,7 @@ class GDumb(Base):
             # time measure
             iter_times = []
             iter_st = None
+            stream_loss, replay_loss = [],[]
 
             for i, (idxs, inputs, targets) in enumerate(self.cl_dataloader):
                 iter_en = time.perf_counter()
@@ -217,7 +233,7 @@ class GDumb(Base):
                 outputs = self.model(inputs)
 
                 loss_value = lam * self.criterion(outputs, labels_a) + (1 - lam) * self.criterion(outputs, labels_b)
-                
+
                 """
                 if self.task_inc == True:
                     print("TASK INC TRAINING")
@@ -240,20 +256,47 @@ class GDumb(Base):
                 self.optimizer.zero_grad()
                 loss_value.backward()
                 self.optimizer.step()
-                
+
+                if self.get_loss == True:
+                    loss_v = torch.nn.CrossEntropyLoss(reduction='none')(outputs,targets)
+                    
+                    get_loss = loss_v.clone().detach()
+                    #get_loss = loss_ext.view(loss_ext.size(0), -1)
+                    #get_loss = loss_ext.mean(-1)
+                    replay_idxs = (idxs < len(self.replay_dataset)).squeeze().nonzero(as_tuple=True)[0]
+                    stream_idxs = (idxs >= len(self.replay_dataset)).squeeze().nonzero(as_tuple=True)[0]
+                    #print(get_loss)
+                    #print(stream_idxs)
+                    stream_loss.append(get_loss[stream_idxs].mean(-1).item())
+                    if get_loss[replay_idxs].size(0) > 0:
+                        replay_loss.append(get_loss[replay_idxs].mean(-1).item())
+                    #print(replay_loss)
+                    
                 #if self.swap == True:
                 #    swap_in_batch = self.swap_manager.swap_determine(idxs, outputs, targets)
                 #    self.swap_manager.swap(swap_in_batch)
 
+        
+        
                 if self.swap == True:
-                    swap_idx, swap_targets = self.swap_manager.swap_determine(idxs,outputs,targets)
-                    self.swap_manager.swap(swap_idx.tolist(), swap_targets.tolist())
+                    #if self.dynamic == True and epoch < (len(self.stream_dataset) * (self.tasks_so_far-1) / self.replay_size) * (1/self.swap_manager.threshold) * 5: # dynamic_ver. at least five epochs for all dataset
+                    if self.dynamic == True and epoch <= int(self.num_epochs * 0.5):
+                        #print("random")
+                        swap_idx, swap_targets = self.swap_manager.random(idxs,outputs,targets)
+                        self.swap_manager.swap(swap_idx.tolist(), swap_targets.tolist())
+
+                    else:
+                        swap_idx, swap_targets = self.swap_manager.swap_determine(idxs,outputs,targets)
+                        self.swap_manager.swap(swap_idx.tolist(), swap_targets.tolist())
 
             # evaluate on every epoch...
             if self.swap == True:
                 print("epoch {}, loss {}, num_swap {}".format(epoch, loss_value.item(), self.swap_manager.get_num_swap()))
                 self.num_swap.append(self.swap_manager.get_num_swap())
                 self.swap_manager.reset_num_swap()
+            
+            self.stream_losses.append(np.mean(np.array(stream_loss)))
+            self.replay_losses.append(np.mean(np.array(replay_loss)))
 
             
             if epoch > 0:
@@ -324,22 +367,44 @@ class GDumb(Base):
         self.model.train()
         return total_accuracy, task_accuracy, class_accuracy
 
-    def eval(self):
-        test_dataloader = DataLoader(self.test_dataset, batch_size = 128, shuffle=False)
+    
+    def eval(self, get_entropy=False):
+        
         self.model.eval()
+        test_dataloader = DataLoader(self.test_dataset, batch_size = 128, shuffle=False)
         
         correct, total = 0, 0
         class_correct = list(0. for i in range(self.classes_so_far))
         class_total = list(0. for i in range(self.classes_so_far))
         class_accuracy = list()
         task_accuracy = dict()
+        
+        if self.swap==True and get_entropy == True:
+            w_entropy_test = []
+            r_entropy_test = []
 
-        for setp, (imgs, labels) in enumerate(test_dataloader):
+            logits_list = []
+            labels_list = []
+
+        for setp, ( imgs, labels) in enumerate(test_dataloader):
             imgs, labels = imgs.to(self.device), labels.to(self.device)
             with torch.no_grad():
                 outputs = self.model(imgs)
-            predicts = torch.max(outputs, dim=1)[1]
+            
+            
+            #get entropy of testset
+            if self.swap==True and get_entropy == True:
+                r, w = self.get_entropy(outputs, labels)
+                r_entropy_test.extend(r)
+                w_entropy_test.extend(w)
+                
+                logits_list.append(outputs)
+                labels_list.append(labels)
+
+            
+            predicts = torch.max(outputs, dim=1)[1] 
             c = (predicts.cpu() == labels.cpu()).squeeze()
+
             correct += (predicts.cpu() == labels.cpu()).sum()
             total += len(labels)
 
@@ -356,12 +421,36 @@ class GDumb(Base):
             i, i, class_acc))
             class_accuracy.append(class_acc)
         
+        print("\n\ndata_manager claases_per_task : ", self.data_manager.classes_per_task)
+
         for task_id, task_classes in self.data_manager.classes_per_task.items():
             task_acc = np.mean(np.array(list(map(lambda x : class_accuracy[x] ,task_classes))))
             task_accuracy[task_id] = task_acc
 
         total_accuracy = 100 * correct / total
         self.model.train()
+
+        
+        if self.swap==True and get_entropy == True:
+            print("RECORD TEST ENTROPY!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            f = open(self.result_save_path + self.filename + '_correct_test_entropy.txt', 'a')
+            f.write(str(r_entropy_test)+"\n")
+            f.close()
+            
+            f = open(self.result_save_path + self.filename + '_wrong_test_entropy.txt', 'a')
+            f.write(str(r_entropy_test)+"\n")
+            f.close()
+
+            
+            logits = torch.cat(logits_list).to(self.device)
+            labels = torch.cat(labels_list).to(self.device)
+
+            ece = self.ece_loss(logits, labels).item()
+            f = open(self.result_save_path + self.filename + '_ece_test.txt', 'a')
+            f.write(str(ece)+"\n")
+            f.close()
+            
+
         return total_accuracy, task_accuracy, class_accuracy
 
     def weight_reset(self, m):
@@ -378,7 +467,7 @@ class GDumb(Base):
         index = torch.randperm(batch_size)
 
         if torch.cuda.is_available():
-            index = index.cuda()
+            index = index.to(self.device)
 
         y_a, y_b = y, y[index]
         bbx1, bby1, bbx2, bby2 = self.rand_bbox(x.size(), lam)

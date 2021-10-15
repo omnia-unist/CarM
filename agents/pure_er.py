@@ -1,3 +1,4 @@
+from math import inf
 from torch.nn import functional as F
 import torch
 import torch.nn
@@ -13,10 +14,15 @@ from agents.base import Base
 from _utils.sampling import multi_task_sample_update_to_RB
 from lib import utils
 
+import math
+
 from scipy.spatial.distance import cdist
 import time
 
 import csv
+import gc
+
+import sys
 
 class PureER(Base):
     def __init__(self, model, opt_name, lr, lr_schedule, lr_decay, device, num_epochs, swap,
@@ -43,6 +49,16 @@ class PureER(Base):
         self.num_swap = list()
 
         self.criterion = torch.nn.CrossEntropyLoss()
+        #self.swap_manager.swap_loss = torch.nn.BCEWithLogitsLoss(reduction="none")
+
+
+        self.how_long_stay = list()
+        self.how_much_reused = list()
+        
+        if 'dynamic' in kwargs:
+            self.dynamic = kwargs['dynamic']
+        else:
+            self.dynamic = False
 
     def before_train(self, task_id):
         
@@ -52,6 +68,8 @@ class PureER(Base):
         self.test_dataset.append_task_dataset(task_id)
 
         self.cl_dataloader.update_loader()
+
+        replay_classes = self.classes_so_far
 
         self.classes_so_far += len(self.stream_dataset.classes_in_dataset)
         print("classes_so_far : ", self.classes_so_far)
@@ -63,11 +81,36 @@ class PureER(Base):
         self.model.train()
         self.model.to(self.device)
 
-        print("length of replay dataset : ", len(self.replay_dataset))
+        self.replay_size = len(self.replay_dataset)
+        print("length of replay dataset : ", self.replay_size)
+        
+        self.stayed_iter = [0] * self.replay_size
+        self.num_called = [0] * self.replay_size
+        
+        
+        self.stream_losses, self.replay_losses = list(), list()
 
         if self.swap is True:
             self.swap_manager.before_train()
-             
+            #set threshold for swap_class_dist
+            if self.tasks_so_far <= 1:
+                self.swap_manager.swap_thr = inf
+            else:
+                batch_size = self.cl_dataloader.batch_size
+
+                #self.swap_manager.swap_thr = int( self.num_epochs * self.swap_manager.threshold * (replay_size / replay_classes) ) + 1
+                self.swap_manager.swap_thr = (batch_size * self.replay_size * self.swap_manager.threshold * self.num_epochs * 
+                                            math.ceil((self.replay_size + len(self.stream_dataset))/batch_size) / (replay_classes * (self.replay_size + len(self.stream_dataset))) )
+
+                print(batch_size)
+                print(self.replay_size)
+                print(self.swap_manager.threshold)
+                print(math.ceil((self.replay_size + len(self.stream_dataset))/batch_size))
+                print(replay_classes)
+                print(len(self.stream_dataset))
+
+            print("SWAP dist threshold : ", (self.swap_manager.swap_thr))
+
             for new_label in self.stream_dataset.classes_in_dataset:
                 sub_stream_data, sub_stream_label, sub_stream_idx = self.stream_dataset.get_sub_data(new_label)
 
@@ -81,6 +124,19 @@ class PureER(Base):
                 del sub_stream_data, sub_stream_label, sub_stream_idx
 
     def after_train(self):
+
+        
+        self.img_sizes = []
+
+        for inp in self.replay_dataset.data:
+            #print(inp.tobytes())
+            img_size = sys.getsizeof(inp.tobytes())
+            self.img_sizes.append(img_size)
+        print("=================================\n")
+        #print(self.img_sizes)
+        print("AVERAGE IMAGE SIZE : ", np.array(np.mean(self.img_sizes)))
+        print("=================================\n")
+
         self.model.eval()
 
         if self.swap == True:
@@ -91,7 +147,7 @@ class PureER(Base):
         #temp acc
         print("SOFTMAX")
                 
-        avg_top1_acc, task_top1_acc, avg_top5_acc, task_top5_acc = self.eval_task()
+        avg_top1_acc, task_top1_acc, avg_top5_acc, task_top5_acc = self.eval_task(get_entropy=self.get_test_entropy)
         
         print("task_accuracy : ", task_top1_acc)
         if self.test_set in ["cifar100", "imagenet", "imagenet1000", "imagenet100"]:
@@ -120,11 +176,21 @@ class PureER(Base):
             f.write("incremental_top5_accuracy : "+str(self.soft_incremental_top5_acc)+"\n")
         f.close()
 
-
+        
         f = open(self.result_save_path + self.filename + '_time.txt','a')
         self.avg_iter_time.append(np.mean(np.array(self.curr_task_iter_time)))
         f.write("avg_iter_time : "+str(self.avg_iter_time)+"\n")
         f.close()
+        
+
+        f = open(self.result_save_path + self.filename + '_replay_loss.txt','a')
+        f.write(str(self.replay_losses)+"\n")
+        f.close()
+
+        f = open(self.result_save_path + self.filename + '_stream_loss.txt','a')
+        f.write(str(self.stream_losses)+"\n")
+        f.close()
+
 
         """
         curr_top1_accuracy, curr_top5_accuracy, task_accuracy, class_accuracy = self.eval(1)    
@@ -150,7 +216,7 @@ class PureER(Base):
         """
 
         
-        
+        """
         if self.swap==True:
             f = open(self.result_save_path + self.filename + f'_num_swap_{self.swap_base}.csv','a',newline="")
             csv_writer = csv.writer(f)
@@ -158,11 +224,27 @@ class PureER(Base):
             f.close()
             self.num_swap = []
 
-
+            
             f = open(self.result_save_path + self.filename + '_distribution.txt', 'a')
             f.write("incremental_accuracy : "+str(self.swap_manager.swap_class_dist)+"\n")
             f.close()
             self.swap_manager.reset_swap_class_dist()
+
+            
+           
+            f = open(self.result_save_path + self.filename + '_lifetime.txt', 'a')
+            #print(self.how_long_stay)
+            #print(self.how_much_reused)
+
+            
+            f.write("how long stay : "+str(self.how_long_stay)+"\n")
+            f.write("how much reused : "+str(self.how_much_reused)+"\n")
+            f.write(f"AVG how long stay : {np.mean(np.array(self.how_long_stay))}\n")
+            f.write(f"AVG how much reused : {np.mean(np.array(self.how_much_reused))}\n")
+            
+            f.close()
+        """
+
             
         
         """nvidia
@@ -172,44 +254,96 @@ class PureER(Base):
         """
         
         self.stream_dataset.clean_stream_dataset()
+        gc.collect()
 
     def train(self):
         
         self.model.train()
         self.reset_opt(self.tasks_so_far)
-        for epoch in range(self.num_epochs): 
 
-            
+        for epoch in range(self.num_epochs):
             # time measure            
             iter_times = []
             iter_st = None
+            swap_st,swap_en = 0,0
+            stream_loss, replay_loss = [],[]
             for i, (idxs, inputs, targets) in enumerate(self.cl_dataloader):
+                
+                for idx in idxs:
+                    if idx < len(self.replay_dataset):
+                        self.num_called[idx] += 1
+                self.stayed_iter = [x + 1 for x in self.stayed_iter]
+
                 iter_en = time.perf_counter()
                 if i > 0 and iter_st is not None:
                     iter_time = iter_en - iter_st
                     print(f"EPOCH {epoch}, ITER {i}, TIME {iter_en-iter_st}...")
                     iter_times.append(iter_time)
-                    if i % 20 == 0:
-                        print(f"EPOCH {epoch}, ITER {i}, TIME {iter_en-iter_st}...")
+                    if i % 10 == 0:
+                        print(f"EPOCH {epoch}, ITER {i}, ITER_TIME {iter_en-iter_st} SWAP_TIME {swap_en-swap_st}...")
                 iter_st = time.perf_counter()
-
 
                 inputs = inputs.to(self.device)
                 targets = targets.to(self.device)
                 outputs = self.model(inputs)
                 
                 if self.swap == True and self.tasks_so_far > 1:
-                    swap_idx, swap_targets = self.swap_manager.swap_determine(idxs,outputs,targets)
-                    
-                    self.swap_manager.swap(swap_idx.tolist(), swap_targets.tolist())
+                    #curriculum epoch < added for early stage training
+                    #if epoch >= 35 : # prof_ver. 50% gate, random
+                    #if epoch < 35: # rev_prof_ver. 50% random, gate
+                    #if epoch < 0 : # loss_only / random ver.
+                    #if self.dynamic == True and epoch < (len(self.stream_dataset) * (self.tasks_so_far-1) / self.replay_size) * (1/self.swap_manager.threshold) * 5: # dynamic_ver. at least five epochs for all dataset
+                    #if self.dynamic == True and epoch <= int(self.num_epochs * 0.5):
+                    if self.dynamic == True and epoch <= int(self.num_epochs * 0.5):
+                        print("random")
+                        swap_idx, swap_targets = self.swap_manager.random(idxs,outputs,targets)
+                        self.swap_manager.swap(swap_idx.tolist(), swap_targets.tolist())
+
+
+                    else:
+                        print("swap base")
+                        swap_idx, swap_targets = self.swap_manager.swap_determine(idxs,outputs,targets)
+                            
+                        swap_st = time.perf_counter()
+                        self.swap_manager.swap(swap_idx.tolist(), swap_targets.tolist())
+                        swap_en = time.perf_counter()
+
+                        for idx in swap_idx:
+                            self.how_long_stay.append(self.stayed_iter[idx])
+                            self.how_much_reused.append(self.num_called[idx])
+                            
+                            self.stayed_iter[idx] = 0
+                            self.num_called[idx] = 0
+
 
                 #BCE instead of CE
                 targets = self.to_onehot(targets, self.classes_so_far).to(self.device)
-                loss_value = F.binary_cross_entropy_with_logits(outputs, targets)
+                #loss_value_2 = F.binary_cross_entropy_with_logits(outputs, targets)
+                #print("loss : ", loss_value_2)
                 
+                loss_value = F.binary_cross_entropy_with_logits(outputs, targets, reduction="none")
+                
+                if self.get_loss == True:
+                    loss_ext = loss_value.clone().detach()
+                    get_loss = loss_ext.view(loss_ext.size(0), -1)
+                    get_loss = loss_ext.mean(-1)
+                    replay_idxs = (idxs < self.replay_size).squeeze().nonzero(as_tuple=True)[0]
+                    stream_idxs = (idxs >= self.replay_size).squeeze().nonzero(as_tuple=True)[0]
+                    stream_loss.append(get_loss[stream_idxs].mean(-1).item())
+                    if get_loss[replay_idxs].size(0) > 0:
+                        replay_loss.append(get_loss[replay_idxs].mean(-1).item())
+                    
+                loss_value = loss_value.mean()
+                #print("loss : ", loss_value)
+
                 self.opt.zero_grad()
                 loss_value.backward()
                 self.opt.step()
+
+            print(stream_loss, replay_loss)
+            self.stream_losses.append(np.mean(np.array(stream_loss)))
+            self.replay_losses.append(np.mean(np.array(replay_loss)))
+            print(self.stream_losses, self.replay_losses)
 
             if self.lr_scheduler is not None:
                 self.lr_scheduler.step()
@@ -217,8 +351,10 @@ class PureER(Base):
             #epoch_accuracy = self.eval(1)
             print("lr {}".format(self.opt.param_groups[0]['lr']))
             self.loss_item.append(loss_value.item())
+
+            
+
             if epoch > 0:
-                
                 print(iter_times)
                 self.curr_task_iter_time.append(np.mean(np.array(iter_times)))
 
@@ -232,11 +368,12 @@ class PureER(Base):
                 
     
     
-    def eval_task(self):
+    
+    def eval_task(self, get_entropy=False):
         self.model.eval()
         
         test_dataloader = DataLoader(self.test_dataset, batch_size = 128, shuffle=False)
-        ypreds, ytrue = self.compute_accuracy(test_dataloader)
+        ypreds, ytrue = self.compute_accuracy(test_dataloader, get_entropy)
 
         
         avg_top1_acc, task_top1_acc = self.accuracy_per_task(ypreds, ytrue, task_size=10, topk=1)
@@ -244,9 +381,16 @@ class PureER(Base):
 
         return avg_top1_acc, task_top1_acc, avg_top5_acc, task_top5_acc
 
-    
-    def compute_accuracy(self, loader):
+    def compute_accuracy(self, loader, get_entropy=False):
         ypred, ytrue = [], []
+
+        
+        if self.swap==True and get_entropy == True:
+            w_entropy_test = []
+            r_entropy_test = []
+
+            logits_list = []
+            labels_list = []
 
         for setp, ( imgs, labels) in enumerate(loader):
             imgs = imgs.to(self.device)
@@ -254,15 +398,40 @@ class PureER(Base):
                 outputs = self.model(imgs)
 
             outputs = outputs.detach()
+            #get entropy of testset
+            if self.swap==True and get_entropy == True:
+                r, w = self.get_entropy(outputs, labels)
+                r_entropy_test.extend(r)
+                w_entropy_test.extend(w)
+                
+                logits_list.append(outputs)
+                labels_list.append(labels)
+
 
             ytrue.append(labels.numpy())
             ypred.append(torch.softmax(outputs, dim=1).cpu().numpy())
 
+        if self.swap==True and get_entropy == True:
+            print("RECORD TEST ENTROPY!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            f = open(self.result_save_path + self.filename + '_correct_test_entropy.txt', 'a')
+            f.write(str(r_entropy_test)+"\n")
+            f.close()
+            
+            f = open(self.result_save_path + self.filename + '_wrong_test_entropy.txt', 'a')
+            f.write(str(r_entropy_test)+"\n")
+            f.close()
+
+            logits = torch.cat(logits_list).to(self.device)
+            labels = torch.cat(labels_list).to(self.device)
+
+            ece = self.ece_loss(logits, labels).item()
+            f = open(self.result_save_path + self.filename + '_ece_test.txt', 'a')
+            f.write(str(ece)+"\n")
+            f.close()
+        
         ytrue = np.concatenate(ytrue)
         ypred = np.concatenate(ypred)
-
         return ypred, ytrue
-
 
     def accuracy_per_task(self,ypreds, ytrue, task_size=10, topk=1):
         """Computes accuracy for the whole test & per task.
@@ -281,7 +450,6 @@ class PureER(Base):
             for task_id, class_id in enumerate(range(0, np.max(ytrue) + task_size, task_size)):
                 if class_id > np.max(ytrue):
                     break
-
                 idxes = np.where(np.logical_and(ytrue >= class_id, ytrue < class_id + task_size))[0]
 
                 label = "{}-{}".format(
@@ -308,7 +476,7 @@ class PureER(Base):
         correct = pred.eq(targets.view(1, -1).expand_as(pred))
 
         correct_k = correct[:topk].reshape(-1).float().sum(0).item()
-        return round(correct_k / batch_size, 3)
+        return round(correct_k / batch_size, 4)
 
     """
     def eval(self, mode):

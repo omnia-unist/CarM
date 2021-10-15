@@ -10,6 +10,9 @@ import torch
 import random
 from _utils.sampling import sample_update_to_RB
 
+
+from lib.swap_manager import SwapManager
+
 class CustomSampler(Sampler[int]):
     def __init__(self, dataset, batch_size, drop_last=True):
         self.dataset = dataset
@@ -30,7 +33,11 @@ class CustomSampler(Sampler[int]):
                     batch_size = self.batch_size
 
                 x = random.sample( range(total_length), batch_size)
-               #print("SAMPLER : ", len(self.dataset), x)
+                
+                #print("SAMPLER : ", len(self.dataset), x)
+
+                #print("CHECK OVERLAP!")
+                #SwapManager.is_overlapped(x)
                 
                 yield x
                 #if self.drop_last is False and len(self.dataset) % batch_size != 0:
@@ -202,7 +209,9 @@ class ConcatContinualDataLoader(object):
                                         )
     def __iter__(self):
         #for batch_img, batch_label in concat_dataloader:
+        
         yield from self.concat_dataloader
+        
 
 # added classes
 class GDumbDataLoader(object):

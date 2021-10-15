@@ -11,9 +11,9 @@ parameters:
   num_task_cls_per_task:
   - 5
   - 2
-  num_workers: 1
+  num_workers: 2
   rb_size: 500
-  result_save_path: /home/XXXXX/swap_replay/streaming/exp_results/table1/derpp/cifar10/no_swap
+  result_save_path: /home/xxxxxxxxx/swap_replay/streaming/exp_results/table1/derpp/cifar10/no_swap
   run: 5
   sampling: reservoir_der
   seed_start: 0

@@ -8,14 +8,14 @@ parameters:
   num_task_cls_per_task:
   - 10
   - 10
-  num_workers: 1
+  num_workers: 2
   rb_path: /data/cl_saved_data/table1/icarl/cifar100/p_swap
   rb_size: 2000
   result_save_path: exp_results/table1/icarl/cifar100/p_swap
   run: 5
   sampling: herding
-  seed_start: null
+  seed_start: 0
   swap: true
-  swap_base: hybrid_ratio
+  swap_base: hybrid_balanced_p
   test_set: cifar100
   threshold: 0.5

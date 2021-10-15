@@ -8,9 +8,9 @@ parameters:
   num_task_cls_per_task:
   - 10
   - 10
-  num_workers: 1
+  num_workers: 2
   rb_size: 2000
-  result_save_path: /home/XXXXX/swap_replay/streaming/exp_results/table1/er/imagenet100/no_swap
+  result_save_path: /home/xxxxxxxxx/swap_replay/streaming/exp_results/table1/er/imagenet100/no_swap
   run: 3
   sampling: ringbuffer
   seed_start: null

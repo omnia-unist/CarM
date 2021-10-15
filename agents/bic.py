@@ -14,7 +14,7 @@ import os
 from agents.base import Base
 from _utils.sampling import multi_task_sample_update_to_RB
 from lib import utils
-
+import gc
 import math
 import time
 
@@ -91,6 +91,7 @@ class BiC(Base):
         self.bias_layers = list()
 
         self.criterion = nn.CrossEntropyLoss()
+        #self.swap_manager.swap_loss = nn.CrossEntropyLoss(reduction="none")
 
         self.old_model = None
         #
@@ -104,7 +105,17 @@ class BiC(Base):
             self.distill = kwargs['distill']
         else:
             self.distill = True
-        print(self.distill)
+        print("======================== DISTILL : ",self.distill)
+
+        
+        self.how_long_stay = list()
+        self.how_much_reused = list()
+
+        
+        if 'dynamic' in kwargs:
+            self.dynamic = kwargs['dynamic']
+        else:
+            self.dynamic = False
 
     def before_train(self, task_id):
         
@@ -135,7 +146,14 @@ class BiC(Base):
         self.model.train()
         self.model.to(self.device)
 
-        print("length of replay dataset : ", len(self.replay_dataset))
+        self.replay_size = len(self.replay_dataset)
+        print("length of replay dataset : ", self.replay_size)
+        
+        self.stayed_iter = [0] * self.replay_size
+        self.num_called = [0] * self.replay_size
+
+        self.stream_losses, self.replay_losses = list(), list()
+
         #
         # add bias correction layer
         #
@@ -185,6 +203,7 @@ class BiC(Base):
             self.model = nn.DataParallel(self.model, device_ids = self.gpu_order)
         """ 
 
+        
         if self.old_model is not None:
             self.old_model.eval()
             print(self.device)
@@ -209,7 +228,7 @@ class BiC(Base):
         print("SOFTMAX")
 
         
-        avg_top1_acc, task_top1_acc, avg_top5_acc, task_top5_acc = self.eval_task()
+        avg_top1_acc, task_top1_acc, avg_top5_acc, task_top5_acc = self.eval_task(get_entropy=self.get_test_entropy)
         
         print("task_accuracy : ", task_top1_acc)
         if self.test_set in ["cifar100", "imagenet", "imagenet1000", "imagenet100"]:
@@ -238,15 +257,36 @@ class BiC(Base):
             f.write("incremental_top5_accuracy : "+str(self.soft_incremental_top5_acc)+"\n")
         f.close()
 
+        
         f = open(self.result_save_path + self.filename + '_time.txt','a')
         self.avg_iter_time.append(np.mean(np.array(self.curr_task_iter_time)))
         f.write("avg_iter_time : "+str(self.avg_iter_time)+"\n")
         f.close()
         self.curr_task_iter_time = []
+        
+        if self.get_loss is True:
+            f = open(self.result_save_path + self.filename + '_replay_loss.txt','a')
+            f.write(str(self.replay_losses)+"\n")
+            f.close()
 
+            f = open(self.result_save_path + self.filename + '_stream_loss.txt','a')
+            f.write(str(self.stream_losses)+"\n")
+            f.close()
 
 
         """
+        if self.swap==True:
+            f = open(self.result_save_path + self.filename + '_lifetime.txt', 'a')
+            #print(self.how_long_stay)
+            #print(self.how_much_reused)
+
+            f.write("how long stay : "+str(self.how_long_stay)+"\n")
+            f.write("how much reused : "+str(self.how_much_reused)+"\n")
+            f.write(f"AVG how long stay : {np.mean(np.array(self.how_long_stay))}\n")
+            f.write(f"AVG how much reused : {np.mean(np.array(self.how_much_reused))}\n")
+            
+            f.close()
+
         curr_top1_accuracy, curr_top5_accuracy, task_accuracy, class_accuracy = self.eval(1)    
         print("class_accuracy : ", class_accuracy)
         print("task_accuracy : ", task_accuracy)
@@ -282,6 +322,7 @@ class BiC(Base):
         self.old_model=copy.deepcopy(self.model)
 
         self.stream_dataset.clean_stream_dataset()
+        gc.collect()
     
     
     def bias_forward(self, input, train=False):
@@ -308,6 +349,11 @@ class BiC(Base):
             
             self.opt = optim.SGD(self.model.parameters(), lr=0.1, momentum=0.9, weight_decay=2e-4)
             self.lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(self.opt, [100,150,200], gamma=0.1)
+
+            if self.num_epochs > 300:
+                lr_change_point = list(range(100,self.num_epochs,50))
+                self.lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(self.opt, lr_change_point, gamma=0.2)
+    
             
             self.bias_opt = optim.SGD(self.bias_layers[len(self.bias_layers)-1].parameters(), lr=0.1, momentum=0.9, weight_decay=2e-4)
             self.bias_opt_scheduler = torch.optim.lr_scheduler.MultiStepLR(self.bias_opt, [200,300,400], gamma=0.1)
@@ -350,15 +396,25 @@ class BiC(Base):
             # time measure            
             iter_times = []
             iter_st = None
+            swap_st,swap_en = 0,0
+            stream_loss, replay_loss = [],[]
+
             for i, (idxs, inputs, targets) in enumerate(self.cl_dataloader):
+
+                
+                for idx in idxs:
+                    if idx < len(self.replay_dataset):
+                        self.num_called[idx] += 1
+                self.stayed_iter = [x + 1 for x in self.stayed_iter]
+
             
                 iter_en = time.perf_counter()
                 if i > 0 and iter_st is not None:
                     iter_time = iter_en - iter_st
-                    #print(f"EPOCH {epoch}, ITER {i}, TIME {iter_en-iter_st}...")
+                    #print(f"EPOCH {epoch}, ITER {i}, ITER_TIME {iter_time} SWAP_TIME {swap_en-swap_st}...")
                     iter_times.append(iter_time)
                     if i % 10 == 0:
-                        print(f"EPOCH {epoch}, ITER {i}, TIME {iter_en-iter_st}...")
+                        print(f"EPOCH {epoch}, ITER {i}, ITER_TIME {iter_time} SWAP_TIME {swap_en-swap_st}...")
                 iter_st = time.perf_counter()
 
 
@@ -369,9 +425,31 @@ class BiC(Base):
                 outputs = self.bias_forward(outputs, train=False)                
                 
                 if self.swap == True and self.tasks_so_far > 1:
-                    swap_idx, swap_targets = self.swap_manager.swap_determine(idxs,outputs,targets)
-                    self.swap_manager.swap(swap_idx.tolist(), swap_targets.tolist())
-                
+                    # curriculum epoch < added for early stage training
+                    #if epoch >= 125 : # prof_ver. 50% gate, random
+                    #if epoch < 125: # rev_prof_ver. 50% random, gate
+                    #if epoch < 0: # only ver.
+                    #if self.dynamic == True and epoch < (len(self.stream_dataset) * (self.tasks_so_far-1) / self.replay_size) * (1/self.swap_manager.threshold) * 5: # dynamic_ver. at least five epochs for all dataset
+                    if self.dynamic == True and epoch <= int(self.num_epochs * 0.5):
+                        print("random")
+                        swap_idx, swap_targets = self.swap_manager.random(idxs,outputs,targets)
+                        self.swap_manager.swap(swap_idx.tolist(), swap_targets.tolist())
+
+                    else:
+                        #print("swap_base")
+                        swap_idx, swap_targets = self.swap_manager.swap_determine(idxs,outputs,targets)
+                        swap_st = time.perf_counter()
+                        self.swap_manager.swap(swap_idx.tolist(), swap_targets.tolist())
+                        swap_en = time.perf_counter()
+
+                        
+                        for idx in swap_idx:
+                            self.how_long_stay.append(self.stayed_iter[idx])
+                            self.how_much_reused.append(self.num_called[idx])
+                            
+                            self.stayed_iter[idx] = 0
+                            self.num_called[idx] = 0
+
 
                 # BIC_swap_img : imagenet + swap + no distill 
                 #if self.swap == True and self.test_set in ["imagenet", "imagenet1000"]:
@@ -395,7 +473,7 @@ class BiC(Base):
                     log_pai_k = F.log_softmax(outputs[..., :old_task_size]/T, dim=1)
 
                     loss_soft_target = -torch.mean(torch.sum(hat_pai_k * log_pai_k, dim=1))
-                    loss_hard_target = nn.CrossEntropyLoss()(outputs, targets)
+                    loss_hard_target = nn.CrossEntropyLoss(reduction="none")(outputs, targets)
                     
                     """
                     old_outputs = F.softmax(old_outputs/T, dim=1)
@@ -407,6 +485,19 @@ class BiC(Base):
                     loss_hard_target = nn.CrossEntropyLoss()(outputs, targets)
                     """
 
+                    
+                    if self.get_loss == True:
+                        get_loss = loss_hard_target.clone().detach()
+                        #get_loss = loss_ext.view(loss_ext.size(0), -1)
+                        #get_loss = loss_ext.mean(-1)
+                        replay_idxs = (idxs < self.replay_size).squeeze().nonzero(as_tuple=True)[0]
+                        stream_idxs = (idxs >= self.replay_size).squeeze().nonzero(as_tuple=True)[0]
+                        stream_loss.append(get_loss[stream_idxs].mean(-1).item())
+                        if get_loss[replay_idxs].size(0) > 0:
+                            replay_loss.append(get_loss[replay_idxs].mean(-1).item())
+                        
+                    loss_hard_target = loss_hard_target.mean()
+
                     if self.distill == False:
                         self.alpha = 0
                         #print(f"No distill ... alpha will be {self.alpha}")
@@ -416,7 +507,20 @@ class BiC(Base):
                     
                     
                 else:
-                    loss = nn.CrossEntropyLoss()(outputs, targets)
+                    loss = nn.CrossEntropyLoss(reduction="none")(outputs, targets)
+                    #print(loss.shape)
+                    if self.get_loss == True:
+                        get_loss = loss.clone().detach()
+                        #get_loss = loss_ext.view(loss_ext.size(0), -1)
+                        #get_loss = loss_ext.mean(-1)
+                        replay_idxs = (idxs < self.replay_size).squeeze().nonzero(as_tuple=True)[0]
+                        stream_idxs = (idxs >= self.replay_size).squeeze().nonzero(as_tuple=True)[0]
+                        #print(get_loss)
+                        #print(stream_idxs)
+                        stream_loss.append(get_loss[stream_idxs].mean(-1).item())
+                        replay_loss.append(get_loss[replay_idxs].mean(-1).item())
+                        
+                    loss = loss.mean()
 
                 
                 self.opt.zero_grad()
@@ -426,6 +530,9 @@ class BiC(Base):
             print("lr {}".format(self.opt.param_groups[0]['lr']))
             print("epoch {}, loss {}".format(epoch, loss.item()))
             self.loss_item.append(loss.item())
+            self.stream_losses.append(np.mean(np.array(stream_loss)))
+            self.replay_losses.append(np.mean(np.array(replay_loss)))
+
 
             if epoch > 0:
                 
@@ -532,15 +639,14 @@ class BiC(Base):
 
 
 
-    
-    def eval_task(self):
+    def eval_task(self, get_entropy=False):
         self.model.eval()
         
         for _ in range(len(self.bias_layers)):
            self.bias_layers[_].eval()
         
         test_dataloader = DataLoader(self.test_dataset, batch_size = 128, shuffle=False)
-        ypreds, ytrue = self.compute_accuracy(test_dataloader)
+        ypreds, ytrue = self.compute_accuracy(test_dataloader, get_entropy)
 
         
         avg_top1_acc, task_top1_acc = self.accuracy_per_task(ypreds, ytrue, task_size=10, topk=1)
@@ -549,19 +655,53 @@ class BiC(Base):
         return avg_top1_acc, task_top1_acc, avg_top5_acc, task_top5_acc
 
     
-    def compute_accuracy(self, loader):
+    def compute_accuracy(self, loader, get_entropy=False):
         ypred, ytrue = [], []
+
+        
+        if self.swap==True and get_entropy == True:
+            w_entropy_test = []
+            r_entropy_test = []
+
+            logits_list = []
+            labels_list = []
 
         for setp, ( imgs, labels) in enumerate(loader):
             imgs = imgs.to(self.device)
             with torch.no_grad():
                 outputs = self.model(imgs)
                 outputs = self.bias_forward(outputs)
-
             outputs = outputs.detach()
+            #get entropy of testset
+            if self.swap==True and get_entropy == True:
+                r, w = self.get_entropy(outputs, labels)
+                r_entropy_test.extend(r)
+                w_entropy_test.extend(w)
+                    
+                logits_list.append(outputs)
+                labels_list.append(labels)
+
 
             ytrue.append(labels.numpy())
             ypred.append(torch.softmax(outputs, dim=1).cpu().numpy())
+
+        if self.swap==True and get_entropy == True:
+            print("RECORD TEST ENTROPY!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            f = open(self.result_save_path + self.filename + '_correct_test_entropy.txt', 'a')
+            f.write(str(r_entropy_test)+"\n")
+            f.close()
+            
+            f = open(self.result_save_path + self.filename + '_wrong_test_entropy.txt', 'a')
+            f.write(str(r_entropy_test)+"\n")
+            f.close()
+
+            logits = torch.cat(logits_list).cuda()
+            labels = torch.cat(labels_list).cuda()
+
+            ece = self.ece_loss(logits, labels).item()
+            f = open(self.result_save_path + self.filename + '_ece_test.txt', 'a')
+            f.write(str(ece)+"\n")
+            f.close()
 
         ytrue = np.concatenate(ytrue)
         ypred = np.concatenate(ypred)
@@ -613,7 +753,7 @@ class BiC(Base):
         correct = pred.eq(targets.view(1, -1).expand_as(pred))
 
         correct_k = correct[:topk].reshape(-1).float().sum(0).item()
-        return round(correct_k / batch_size, 3)
+        return round(correct_k / batch_size, 4)
 
 
 

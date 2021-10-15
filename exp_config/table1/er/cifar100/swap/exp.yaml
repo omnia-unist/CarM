@@ -6,12 +6,12 @@ parameters:
   mode: disjoint
   model: resnet32
   num_task_cls_per_task:
-  - 5
-  - 20
-  num_workers: 1
+  - 10
+  - 10
+  num_workers: 2
   rb_path: /data/cl_saved_data/table1/er/cifar100/swap
   rb_size: 2000
-  result_save_path: /home/XXXXX/swap_replay/streaming/exp_results/table1/er/cifar100/swap
+  result_save_path: /home/xxxxxxxxx/swap_replay/streaming/exp_results/table1/er/cifar100/swap
   run: 5
   sampling: ringbuffer
   seed_start: null

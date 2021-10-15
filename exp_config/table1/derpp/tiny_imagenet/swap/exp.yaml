@@ -11,10 +11,10 @@ parameters:
   num_task_cls_per_task:
   - 10
   - 20
-  num_workers: 1
+  num_workers: 2
   rb_path: /data/cl_saved_data/table1/derpp/tiny_imagenet/swap
   rb_size: 500
-  result_save_path: /home/XXXXX/swap_replay/streaming/exp_results/table1/derpp/tiny_imagenet/swap
+  result_save_path: /home/xxxxxxxxx/swap_replay/streaming/exp_results/table1/derpp/tiny_imagenet/swap
   run: 3
   sampling: reservoir_der
   seed_start: 0

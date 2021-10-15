@@ -16,7 +16,9 @@ from networks.resnet_for_cifar import resnet32
 from networks.der_resnet import resnet18 as der_resnet18
 from networks.tiny_resnet import ResNet18 as tiny_resnet18
 from networks.densenet import DenseNet as densenet
+from lib.factory import get_optimizer
 from lib.swap_manager import SwapManager
+from lib.utils import _ECELoss
 
 class Base(object):
     def __init__(self, model, opt_name, lr, lr_schedule, lr_decay, device, num_epochs, swap,
@@ -41,6 +43,7 @@ class Base(object):
         self.swap = swap
         self.transform = transform
         self.test_set = test_set
+        self.ece_loss = _ECELoss().to(self.device)
 
         self.set_nomalize()
         
@@ -55,6 +58,7 @@ class Base(object):
  
         self.num_swap = list()
         self.avg_iter_time = list()
+
 
         if 'result_save_path' in kwargs:
             self.result_save_path = kwargs['result_save_path'].strip()
@@ -76,8 +80,13 @@ class Base(object):
             #self.model = PreResNet(32)
             self.model = network(PreResNet(32))
         elif model == "der_resnet":
-            if self.test_set == "tiny_imagenet":
+            
+            if self.test_set == "imagenet1000":
+                self.model = der_resnet18(1000)
+            elif self.test_set == "tiny_imagenet":
                 self.model = der_resnet18(200)
+            elif self.test_set == "cifar100":
+                self.model = der_resnet18(100)
             else:
                 self.model = der_resnet18(10)
             
@@ -90,22 +99,55 @@ class Base(object):
             self.model = network(densenet())
 
 
+        if 'seed' in kwargs:
+            self.seed = kwargs['seed']
+        else:
+            self.seed = None
+        
+        if 'get_loss' in kwargs:
+            self.get_loss = kwargs['get_loss']
+        else:
+            self.get_loss = False
+            
+        if 'get_train_entropy' in kwargs:
+            self.get_train_entropy = kwargs['get_train_entropy']
+        else:
+            self.get_train_entropy = False
+        
+        if 'get_test_entropy' in kwargs:
+            self.get_test_entropy = kwargs['get_test_entropy']
+        else:
+            self.get_test_entropy = False
+        
+        
         #elif model == "cifar_resnet":
         #    self.model = network(resnet_rebuffi(32))
         #elif model == "icarl_resnet":
         #    self.model = network(make_icarl_net())
 
-
         if self.swap == True:
+            
+            if 'dynamic' in kwargs:
+                self.dynamic = kwargs['dynamic']
+            else:
+                self.dynamic = False
+                    
             if 'swap_base' in kwargs:
                 self.swap_base = kwargs['swap_base']
             else:
                 self.swap_base = 'all'
+                
             if 'threshold' in kwargs:
                 threshold = float(kwargs['threshold'])
             else:
                 threshold = 0.5
-            self.swap_num_workers = 1
+
+            
+            if 'swap_workers' in kwargs:
+                self.swap_num_workers = int(kwargs['swap_workers'])
+            else:
+                self.swap_num_workers = 1
+                
             print(self.swap_base, threshold)
             
             """
@@ -120,6 +162,7 @@ class Base(object):
             if 'store_ratio' in kwargs:
                 self.store_ratio = float(kwargs['store_ratio'])
 
+                """
                 if self.test_set == "tiny_imagenet":
                     store_budget = int(100000 * self.store_ratio)
                 elif self.test_set == "mini_imagenet":
@@ -128,15 +171,26 @@ class Base(object):
                     store_budget = int(129395 * self.store_ratio)
                 elif self.test_set == "imagenet1000" or self.test_set == "imagenet":
                     store_budget = int(1281168 * self.store_ratio)
+                elif self.test_set == "cifar100":
+                    store_budget = int(50000 * self.store_ratio)
+                elif self.test_set == "cifar10":
+                    store_budget = int(50000 * self.store_ratio)
                 else:
                     store_budget = None
+                """
+                store_budget = int(self.replay_dataset.rb_size * self.store_ratio)
                 self.store_budget = store_budget
             else:
                 self.store_budget = None
 
+
+            print("=========================================STORE BUDGET : ", self.store_budget)
+
+            """
             self.swap_manager = SwapManager(self.replay_dataset, self.swap_num_workers, 
-                                            self.swap_base, threshold=threshold, store_budget=self.store_budget)
-        
+                                            self.swap_base, threshold=threshold, store_budget=self.store_budget,
+                                            swapping_set=self.swapping_set)
+            """
         
         if (self.swap == True and self.swap_num_workers> 0) or self.cl_dataloader.num_workers > 0:
             self.manager = python_multiprocessing.Manager()
@@ -150,6 +204,11 @@ class Base(object):
             if hasattr(self.replay_dataset, 'logits'):
                 self.replay_dataset.logits = self.manager.list(self.replay_dataset.logits)
         
+        if self.swap == True:
+            self.swap_manager = SwapManager(self.replay_dataset, self.swap_num_workers, 
+                                            self.swap_base, threshold=threshold, store_budget=self.store_budget, 
+                                            filename=self.filename, result_save_path = self.result_save_path, get_entropy=self.get_train_entropy, seed=self.seed)
+            
 
     def to_onehot(self, targets, n_classes):
         onehot = torch.zeros(targets.shape[0], n_classes).to(targets.device)
@@ -167,6 +226,26 @@ class Base(object):
             self.nomalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                             std=[0.229, 0.224, 0.225])
 
+    def get_entropy(self, outputs, targets):
+        
+        if self.get_test_entropy == False:
+            return
+
+        print("GET TEST ENTROPY IS CALLED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        softmax = torch.nn.Softmax(dim=1)
+        soft_output = softmax(outputs)
+        entropy = torch.distributions.categorical.Categorical(probs=soft_output).entropy()
+        #
+        # if wrong predicted sample with low entropy, don't make it swap (make swap FALSE)
+        #
+        predicts = torch.max(outputs, dim=1)[1]
+        r_predicted = (predicts.cpu() == targets.cpu()).squeeze().nonzero(as_tuple=True)[0]
+        r_entropy = entropy[r_predicted]
+
+        w_predicted = (predicts.cpu() != targets.cpu()).squeeze().nonzero(as_tuple=True)[0]
+        w_entropy = entropy[w_predicted]
+        
+        return r_entropy.tolist(), w_entropy.tolist()
 
     #hard coded
     def reset_opt(self, step=None):
@@ -177,6 +256,9 @@ class Base(object):
             self.lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
                                     self.opt, [49,63], gamma=0.2
                                 )
+            if self.num_epochs > 80:
+                lr_change_point = list(range(0,self.num_epochs,40))
+                self.lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(self.opt, lr_change_point, gamma=0.25)
             
         elif self.test_set in ["imagenet", "imagenet100", "imagenet1000"]:
             #icarl setting

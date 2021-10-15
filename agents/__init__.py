@@ -3,7 +3,8 @@ from .icarl import ICarl
 from .pure_er import PureER
 from .stream_er import StreamER
 from .bic import BiC
-#from .bic_keepopt import BiCOpt
+from .bic_no_distill import BiC_no_distill
+from .icarl_distill import ICarl_distill
 #from .lwf import LwF
 from .der import DarkER
 from .test import Test
@@ -12,3 +13,4 @@ from .rainbow import Rainbow
 from .gdumb import GDumb
 #from .aser import Aser
 from .derpp import DarkERPlus
+from .derpp_distill import DarkERPlus_distill

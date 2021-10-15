@@ -15,6 +15,7 @@ from scipy.spatial.distance import cdist
 
 import time
 import csv
+import gc
 
 EPSILON = 1e-8
 
@@ -82,6 +83,7 @@ class ICarl(Base):
         self.num_swap = list()
 
         self._herding_indexes = list()
+        #self.swap_manager.swap_loss = torch.nn.BCEWithLogitsLoss(reduction="none")
 
         
         if 'distill' in kwargs:
@@ -89,6 +91,7 @@ class ICarl(Base):
         else:
             self.distill = True
         print("DISTILL : ", self.distill)
+
 
         
     def before_train(self, task_id):
@@ -98,6 +101,8 @@ class ICarl(Base):
         self.test_dataset.append_task_dataset(task_id)
 
         self.cl_dataloader.update_loader()
+
+        
 
         self.classes_so_far += len(self.stream_dataset.classes_in_dataset)
         self.model.Incremental_learning(self.classes_so_far)
@@ -128,6 +133,10 @@ class ICarl(Base):
                     if st > len(sub_stream_data):
                         break
                 del sub_stream_data, sub_stream_label, sub_stream_idx
+        self.replay_size = len(self.replay_dataset)
+
+        self.stream_losses, self.replay_losses = list(), list()
+
     def after_train(self):
         self.model.eval()
         
@@ -144,7 +153,8 @@ class ICarl(Base):
         
         
         print("NMC")
-        avg_top1_acc, task_top1_acc, avg_top5_acc, task_top5_acc = self.eval_task()
+        print("================= self.get_test_entropy : ", self.get_test_entropy)
+        avg_top1_acc, task_top1_acc, avg_top5_acc, task_top5_acc = self.eval_task(get_entropy=self.get_test_entropy)
         
         print("task_accuracy : ", task_top1_acc)
         if self.test_set in ["cifar100", "imagenet", "imagenet1000", "imagenet100"]:
@@ -186,10 +196,20 @@ class ICarl(Base):
             f.close()
             self.num_swap = []
         
+        if self.get_loss is True:
+            f = open(self.result_save_path + self.filename + '_replay_loss.txt','a')
+            f.write(str(self.replay_losses)+"\n")
+            f.close()
+
+            f = open(self.result_save_path + self.filename + '_stream_loss.txt','a')
+            f.write(str(self.stream_losses)+"\n")
+            f.close()
+        
 
         self.old_model=copy.deepcopy(self.model)
         
         self.stream_dataset.clean_stream_dataset()
+        gc.collect()
 
     
     def compute_examplar_mean(self, feat_norm, feat_flip, indexes, nb_max):
@@ -316,7 +336,7 @@ class ICarl(Base):
         targets = self.to_onehot(targets, self.classes_so_far).to(self.device)
 
         if self.distill == False or self.old_model is None:
-            return F.binary_cross_entropy_with_logits(outputs, targets)
+            return F.binary_cross_entropy_with_logits(outputs, targets, reduction='none')
         else:
             #print("DISTILL ON")
             with torch.no_grad():
@@ -330,7 +350,7 @@ class ICarl(Base):
             #loss2 = F.binary_cross_entropy_with_logits(outputs, targets_for_old)
             #alpha = 1
             #loss = (1-alpha) * loss1 + alpha * loss2
-            loss = F.binary_cross_entropy_with_logits(outputs, targets_for_old)
+            loss = F.binary_cross_entropy_with_logits(outputs, targets_for_old, reduction='none')
             return loss
 
     #@profile
@@ -347,6 +367,7 @@ class ICarl(Base):
             # time measure            
             iter_times = []
             iter_st = None
+            stream_loss, replay_loss = [],[]
             for i, (idxs, inputs, targets) in enumerate(self.cl_dataloader):
                 iter_en = time.perf_counter()
                 if i > 0 and iter_st is not None:
@@ -362,8 +383,15 @@ class ICarl(Base):
                 outputs = self.model(inputs)
                 
                 if self.swap == True and self.tasks_so_far > 1:
-                    swap_idx, swap_targets = self.swap_manager.swap_determine(idxs,outputs,targets)
-                    self.swap_manager.swap(swap_idx.tolist(), swap_targets.tolist())
+                    #if self.dynamic == True and epoch < (len(self.stream_dataset) * (self.tasks_so_far-1) / self.replay_size) * (1/self.swap_manager.threshold) * 5: # dynamic_ver. at least five epochs for all dataset
+                    if self.dynamic == True and epoch <= int(self.num_epochs * 0.5):
+                        print("random")
+                        swap_idx, swap_targets = self.swap_manager.random(idxs,outputs,targets)
+                        self.swap_manager.swap(swap_idx.tolist(), swap_targets.tolist())
+
+                    else:
+                        swap_idx, swap_targets = self.swap_manager.swap_determine(idxs,outputs,targets)
+                        self.swap_manager.swap(swap_idx.tolist(), swap_targets.tolist())
 
                 if self.distill == False:
                     targets = self.to_onehot(targets, self.classes_so_far).to(self.device)
@@ -371,6 +399,18 @@ class ICarl(Base):
 
                 else:
                     loss_value = self.compute_loss(outputs, targets, inputs)
+
+                    if self.get_loss == True:
+                        loss_ext = loss_value.clone().detach()
+                        get_loss = loss_ext.view(loss_ext.size(0), -1)
+                        get_loss = loss_ext.mean(-1)
+                        replay_idxs = (idxs < self.replay_size).squeeze().nonzero(as_tuple=True)[0]
+                        stream_idxs = (idxs >= self.replay_size).squeeze().nonzero(as_tuple=True)[0]
+                        stream_loss.append(get_loss[stream_idxs].mean(-1).item())
+                        if get_loss[replay_idxs].size(0) > 0:
+                            replay_loss.append(get_loss[replay_idxs].mean(-1).item())
+                        
+                    loss_value = loss_value.mean()
                 
                 self.opt.zero_grad()
                 loss_value.backward()
@@ -390,6 +430,8 @@ class ICarl(Base):
 
             #print("lr {}".format(self.opt.param_groups[0]['lr']))
             self.loss_item.append(loss_value.item())
+            self.stream_losses.append(np.mean(np.array(stream_loss)))
+            self.replay_losses.append(np.mean(np.array(replay_loss)))
             
             if self.swap == True:
                 print("epoch {}, loss {}, num_swap {}".format(epoch, loss_value.item(), self.swap_manager.get_num_swap()))
@@ -399,7 +441,7 @@ class ICarl(Base):
                 print("epoch {}, loss {}".format(epoch, loss_value.item()))
     
 
-    def eval_task(self):
+    def eval_task(self, softmax=False, get_entropy=False):
         self.model.eval()
         test_dataloader = DataLoader(self.test_dataset, batch_size = 128, shuffle=False)
         
@@ -410,15 +452,17 @@ class ICarl(Base):
         else:
             ypreds, ytrue = self.compute_accuracy(self.model, test_dataloader, self._class_means)
         """
-        ypreds, ytrue = self.compute_accuracy(self.model, test_dataloader, self._class_means)
+        if softmax==False:
+            ypreds, ytrue = self.compute_accuracy(self.model, test_dataloader, self._class_means, get_entropy)
+        else:
+            ypreds, ytrue = self.compute_accuracy_softmax(test_dataloader)
 
         avg_top1_acc, task_top1_acc = self.accuracy_per_task(ypreds, ytrue, task_size=10, topk=1)
         avg_top5_acc, task_top5_acc = self.accuracy_per_task(ypreds, ytrue, task_size=10, topk=5)
 
         return avg_top1_acc, task_top1_acc, avg_top5_acc, task_top5_acc
-
     
-    def compute_accuracy(self, model, loader, class_means):
+    def compute_accuracy(self, model, loader, class_means, get_entropy=False):
         features, targets_ = utils.extract_features(model, loader, self.device)
 
         features = (features.T / (np.linalg.norm(features.T, axis=0) + EPSILON)).T
@@ -427,6 +471,49 @@ class ICarl(Base):
         sqd = cdist(class_means, features, 'sqeuclidean')
         score_icarl = (-sqd).T
 
+        if self.swap==True and get_entropy == True:
+            w_entropy_test = []
+            r_entropy_test = []
+
+            logits_list = []
+            labels_list = []
+
+        for setp, ( imgs, labels) in enumerate(loader):
+            imgs = imgs.to(self.device)
+            with torch.no_grad():
+                outputs = self.model(imgs)
+
+            outputs = outputs.detach()
+            
+            #get entropy of testset
+            if self.swap==True and get_entropy == True:
+                print("GET TEST ENTROPY!!!!!!!!!!!!!!")
+                r, w = self.get_entropy(outputs, labels)
+                r_entropy_test.extend(r)
+                w_entropy_test.extend(w)
+                    
+                logits_list.append(outputs)
+                labels_list.append(labels)
+
+        if self.swap==True and get_entropy == True:
+            print("RECORD TEST ENTROPY!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            f = open(self.result_save_path + self.filename + '_correct_test_entropy.txt', 'a')
+            f.write(str(r_entropy_test)+"\n")
+            f.close()
+            
+            f = open(self.result_save_path + self.filename + '_wrong_test_entropy.txt', 'a')
+            f.write(str(r_entropy_test)+"\n")
+            f.close()
+
+            logits = torch.cat(logits_list).to(self.device)
+            labels = torch.cat(labels_list).to(self.device)
+
+            ece = self.ece_loss(logits, labels).item()
+            f = open(self.result_save_path + self.filename + '_ece_test.txt', 'a')
+            f.write(str(ece)+"\n")
+            f.close()
+
+            
         return score_icarl, targets_
 
 
@@ -492,4 +579,4 @@ class ICarl(Base):
         correct = pred.eq(targets.view(1, -1).expand_as(pred))
 
         correct_k = correct[:topk].reshape(-1).float().sum(0).item()
-        return round(correct_k / batch_size, 3)
+        return round(correct_k / batch_size, 4)

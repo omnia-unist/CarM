@@ -121,7 +121,14 @@ def experiment(final_params):
                 np.random.seed(seed)
                 torch.manual_seed(seed)
                 random.seed(seed)
+                torch.cuda.manual_seed_all(seed)
+                torch.cuda.manual_seed(seed)
+                torch.backends.cudnn.deterministic = True
+                torch.backends.cudnn.benchmark = False
+                
                 print("SEED : ", seed)
+                
+                final_params.seed = seed
 
         num_task = final_params.num_task_cls_per_task[0]
         num_classes_per_task = final_params.num_task_cls_per_task[1]

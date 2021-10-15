@@ -1,0 +1,24 @@
+parameters:
+  agent_name: bic_distill
+  alpha: 0.4
+  batch_size: 256
+  data_order: fixed
+  epochs: 100
+  filename: bic_distill_0.4_
+  get_test_entropy: true
+  mode: disjoint
+  model: resnet18
+  num_task_cls_per_task:
+  - 10
+  - 10
+  num_workers: 3
+  rb_path: /xxxxxxxxx/data/distill_imagenet
+  rb_size: 2000
+  result_save_path: exp_results/bic_distill
+  run: 1
+  sampling: ringbuffer
+  seed_start: 0
+  swap: true
+  swap_base: hybrid_balanced_p
+  test_set: imagenet100
+  threshold: 0.5

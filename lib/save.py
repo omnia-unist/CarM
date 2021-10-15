@@ -6,6 +6,11 @@ import pickle
 import queue
 import threading
 import multiprocessing as python_multiprocessing
+import directio, sys, mmap, io
+import math
+import numpy as np
+import random
+import torch
 
 class DataSaver(object):
     #m = python_multiprocessing.Manager()
@@ -15,34 +20,39 @@ class DataSaver(object):
     #num_file_for_label = dict()
     #observed = set()
 
-    def __init__(self, rb_path, store_budget=None):
+    def __init__(self, rb_path, store_budget=None, seed=None):
         if len(rb_path)-1 == '/':
             rb_path = rb_path[:len(rb_path)-1]
         self.rb_path = rb_path
         self.store_budget = store_budget
         print("STORAGE_BUDGET : ", self.store_budget)
 
-
+        
         m = python_multiprocessing.Manager()
         print('MANAGER_2 PID:', m._process.ident)
 
         self.num_file_for_label = m.dict()
-
-        print("\n==================\nSAVE WORKER IS CREATED")
         print("num_file_for_label : ", self.num_file_for_label)
-    
+        
+        self.seed = seed
+        
+
     def before_train(self):
+        
         print("SAVE WORKER CREATED!")
         self.save_done_event = python_multiprocessing.Event()
         self.save_queue = python_multiprocessing.Queue()
         self.save_worker = python_multiprocessing.Process(
                     target = self.save_loop,
-                    args=(self.save_queue, self.save_done_event)
+                    args=(self.save_queue, self.save_done_event,self.seed)
         )
+
         self.save_worker.daemon = True
         self.save_worker.start()
-
+        
+        
     def after_train(self):
+        
         self.save_done_event.set()
         self.save_queue.put((None,None,None))
         self.save_worker.join()
@@ -50,14 +60,14 @@ class DataSaver(object):
         self.save_queue.close()
 
         print("SAVE SHUTDOWN")
-
+        
     async def makedir(self, path):
         try:
             os.makedirs(path, exist_ok=True)
             return True
         except:
             return False
-    
+    """
     async def data_save(self, img, path, label, logit=None, logit_path=None):
         try:
             #print(logit_path)
@@ -71,7 +81,53 @@ class DataSaver(object):
         except Exception as e:
             print(e)
             return False
+    """
+    async def data_save(self, img, path, label, logit=None, logit_path=None):
+        
+        #print(bytes(img.tobytes()))
+        imgByteArr = io.BytesIO()
+        img.save(imgByteArr, format='PNG')
+        imgByteArr = imgByteArr.getvalue()
+        f = os.open(path, os.O_RDWR | os.O_CREAT | os.O_DIRECT)
+        
+        #print(sys.getsizeof(imgByteArr))
 
+        block_size = 512 * math.ceil(sys.getsizeof(imgByteArr) / 512)
+        m = mmap.mmap(-1, block_size)
+        m.write(imgByteArr)
+
+        ret = directio.write(f, m[:block_size])
+
+        os.close(f)
+
+        if logit is not None and logit_path is not None:
+            logit_byte = pickle.dumps(logit)
+            f = os.open(logit_path, os.O_RDWR | os.O_CREAT | os.O_DIRECT)
+                
+            block_size = 512 * math.ceil(sys.getsizeof(logit_byte) / 512)
+            m = mmap.mmap(-1, block_size)
+            m.write(logit_byte)
+
+            ret = directio.write(f, m[:block_size])
+            os.close(f)
+    
+        
+        return label
+
+
+        try:
+            #print(logit_path)
+            img.save(path)
+            if logit is not None and logit_path is not None:
+                with open(logit_path, 'wb') as f:
+                    pickle.dump(logit, f)
+                #f.close()
+            return label
+        
+        except Exception as e:
+            print(e)
+            return False
+    
 
     async def main_budget(self, stream_data, stream_targets, stream_outputs=None):
 
@@ -160,7 +216,17 @@ class DataSaver(object):
         #print("DATA ARE ALL SAVED! ", self.num_file_for_label)
     
     
-    def save_loop(self, save_queue, save_done_event):
+    def save_loop(self, save_queue, save_done_event, seed=None):
+
+        if seed is not None:
+            np.random.seed(seed)
+            torch.manual_seed(seed)
+            random.seed(seed)
+            torch.cuda.manual_seed_all(seed)
+            torch.cuda.manual_seed(seed)
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
+
         print("SAVE WORKER ID : ", os.getpid())
         while True:
             stream_data, stream_targets, stream_outputs = self.save_queue.get()
@@ -178,8 +244,11 @@ class DataSaver(object):
             del stream_data, stream_targets, stream_outputs
             
     def save(self, stream_data, stream_targets, stream_outputs=None):
+        #asyncio.run(self.main(stream_data, stream_targets, stream_outputs))
+        
         self.save_queue.put((stream_data, stream_targets, stream_outputs))
-
+        #print("ALL DATA IS SAVED!!")
+        
         """        
         if self.imagenet == True:
             print("SAVING ALL STREAM SAMPLES...")

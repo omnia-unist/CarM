@@ -1,0 +1,24 @@
+parameters:
+  agent_name: rm
+  batch_size: 16
+  data_order: sorted
+  dynamic: true
+  epochs: 128
+  get_loss: true
+  get_test_entropy: true
+  mode: disjoint
+  model: densenet
+  num_task_cls_per_task:
+  - 10
+  - 20
+  num_workers: 3
+  rb_path: ../../data/cl_saved_data/policytest_imagenet/rm/tiny_imagenet/dynamic
+  rb_size: 4500
+  result_save_path: exp_results/policytest_imagenet/rm/tiny_imagenet/dynamic
+  run: 3
+  sampling: greedy_balance
+  seed_start: 0
+  swap: true
+  swap_base: hybrid_balanced_p
+  test_set: tiny_imagenet
+  threshold: 0.5

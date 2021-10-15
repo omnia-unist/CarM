@@ -1,0 +1,26 @@
+parameters:
+  agent_name: derpp
+  alpha: 0.2
+  batch_size: 32
+  beta: 0.5
+  data_order: sorted
+  epochs: 50
+  filename: store_ratio_10_sample_
+  lr: 0.03
+  mode: disjoint
+  model: der_resnet
+  num_task_cls_per_task:
+  - 5
+  - 2
+  num_workers: 2
+  rb_path: ../../data/cl_saved_data/storagetest_cifar/derpp/cifar10
+  rb_size: 500
+  result_save_path: exp_results/storagetest_cifar/derpp/cifar10
+  run: 1
+  sampling: reservoir_der
+  seed_start: 0
+  store_ratio: 10 #0.0753
+  swap: true
+  swap_base: hybrid_balanced_p
+  test_set: cifar10
+  threshold: 0.5

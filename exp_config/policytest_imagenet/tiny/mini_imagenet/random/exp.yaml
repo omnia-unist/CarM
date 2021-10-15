@@ -1,0 +1,23 @@
+parameters:
+  agent_name: tiny
+  batch_size: 10
+  data_order: seed
+  epochs: 1
+  get_loss: true
+  get_test_entropy: true
+  mode: disjoint
+  model: resnet18
+  num_task_cls_per_task:
+  - 20
+  - 5
+  num_workers: 3
+  rb_path: /data/cl_saved_data/policytest_imagenet/tiny/mini_imagenet/random
+  rb_size: 500
+  result_save_path: exp_results/policytest_imagenet/tiny/mini_imagenet/random
+  run: 10
+  sampling: reservoir
+  seed_start: 1234
+  swap: true
+  swap_base: random
+  test_set: mini_imagenet
+  threshold: 0.5

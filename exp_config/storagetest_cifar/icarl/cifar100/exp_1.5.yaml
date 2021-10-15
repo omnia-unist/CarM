@@ -1,0 +1,23 @@
+parameters:
+  agent_name: icarl
+  batch_size: 128
+  data_order: fixed
+  epochs: 70
+  filename: store_ratio_1.5_sample_
+  mode: disjoint
+  model: resnet32
+  num_task_cls_per_task:
+  - 10
+  - 10
+  num_workers: 2
+  rb_path: ../../data/cl_saved_data/storagetest_cifar/icarl/cifar100
+  rb_size: 2000
+  result_save_path: exp_results/storagetest_cifar/icarl/cifar100
+  run: 1
+  sampling: herding
+  seed_start: 0
+  store_ratio: 1.5 #0.0452
+  swap: true
+  swap_base: hybrid_balanced_p
+  test_set: cifar100
+  threshold: 0.5

@@ -11,7 +11,7 @@ parameters:
   num_task_cls_per_task:
   - 10
   - 20
-  num_workers: 1
+  num_workers: 2
   rb_path: /data/cl_saved_data/table1/derpp/tiny_imagenet/p_swap
   rb_size: 500
   result_save_path: exp_results/table1/derpp/tiny_imagenet/p_swap
@@ -19,6 +19,6 @@ parameters:
   sampling: reservoir_der
   seed_start: 0
   swap: true
-  swap_base: hybrid_ratio
+  swap_base: hybrid_balanced_p
   test_set: tiny_imagenet
   threshold: 0.5

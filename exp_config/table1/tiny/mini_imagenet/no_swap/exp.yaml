@@ -8,9 +8,9 @@ parameters:
   num_task_cls_per_task:
   - 20
   - 5
-  num_workers: 1
+  num_workers: 2
   rb_size: 500
-  result_save_path: /home/XXXXX/swap_replay/streaming/exp_results/table1/tiny/mini_imagenet/no_swap
+  result_save_path: /home/xxxxxxxxx/swap_replay/streaming/exp_results/table1/tiny/mini_imagenet/no_swap
   run: 3
   sampling: reservoir
   seed_start: 1234

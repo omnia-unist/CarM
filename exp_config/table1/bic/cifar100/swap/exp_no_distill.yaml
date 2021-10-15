@@ -1,0 +1,21 @@
+parameters:
+  agent_name: bic
+  batch_size: 128
+  data_order: fixed
+  epochs: 250
+  mode: disjoint
+  model: resnet18
+  num_task_cls_per_task:
+  - 5
+  - 20
+  num_workers: 2
+  rb_path: /data/cl_saved_data/table1/bic/cifar100/swap
+  rb_size: 2000
+  result_save_path: /home/xxxxxxxxx/swap_replay/streaming/exp_results/table1/bic/cifar100/swap
+  run: 5
+  sampling: ringbuffer
+  filename: task5_no_distill_resnet18_
+  distill: False
+  seed_start: null
+  swap: true
+  test_set: cifar100

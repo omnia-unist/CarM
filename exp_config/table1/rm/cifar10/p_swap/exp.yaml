@@ -1,0 +1,21 @@
+parameters:
+  agent_name: rm
+  batch_size: 16
+  data_order: fixed
+  epochs: 256
+  mode: disjoint
+  model: resnet18
+  num_task_cls_per_task:
+  - 5
+  - 2
+  num_workers: 2
+  rb_path: /data/cl_saved_data/table1/rm/cifar10/p_swap
+  rb_size: 500
+  result_save_path: exp_results/table1/rm/cifar10/p_swap
+  run: 5
+  sampling: greedy_balance
+  seed_start: 0
+  swap: true
+  swap_base: hybrid_balanced_p
+  test_set: cifar10
+  threshold: 0.5

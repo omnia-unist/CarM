@@ -75,7 +75,7 @@ class ReplayDataset(Dataset):
             return True
 
     def __getitem__(self, idx):
-        if self.agent in ["der","derpp", "tiny","aser"]:
+        if self.agent in ["der","derpp","derpp_distill", "tiny","aser"]:
             return self.getitem_online(idx)
 
         else:
@@ -93,11 +93,13 @@ class ReplayDataset(Dataset):
         #print("IDX : ", idx)
 
         img = self.data[idx]
+
+        
         img = self.transform(img)
         label = self.targets[idx]
         data_id = self.tracker[idx]
         
-        if self.agent in ["der","derpp"]:
+        if self.agent in ["der","derpp_distill","derpp"]:
             logit = self.logits[idx]
             logit = torch.as_tensor(array('f', logit))
 

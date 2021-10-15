@@ -56,9 +56,9 @@ class Tiny(Base):
     def before_train(self, task_id):
         self.curr_task_iter_time = []
 
-
         self.stream_dataset.create_task_dataset(task_id)
         self.test_dataset.append_task_dataset(task_id)
+
 
         self.replay_dataloader = TinyReplayDataLoader(self.replay_dataset, self.data_manager, self.cl_dataloader.num_workers, self.cl_dataloader.batch_size)
         self.iter_r = iter(self.replay_dataloader)
@@ -77,6 +77,9 @@ class Tiny(Base):
             
         self.cl_dataloader.update_loader()
         
+        self.stream_losses, self.replay_losses = list(), list()
+
+        
     def train(self):
         # number of iterations through the data
         for epoch in range(self.num_epochs):
@@ -85,12 +88,13 @@ class Tiny(Base):
             # time measure
             iter_times = []
             iter_st = None
+            stream_loss, replay_loss = [],[]
+
             for data_stream_count, (stream_idxs, inputs, targets) in enumerate(self.cl_dataloader):
                 iter_en = time.perf_counter()
                 if data_stream_count > 0 and iter_st is not None:
                     iter_time = iter_en - iter_st
                     
-                    print(f"EPOCH {epoch}, ITER {data_stream_count}, TIME {iter_en-iter_st}...")
                     iter_times.append(iter_time)
                     if data_stream_count % 20 == 0:
                         print(f"EPOCH {epoch}, ITER {data_stream_count}, TIME {iter_en-iter_st}...")
@@ -136,10 +140,21 @@ class Tiny(Base):
                     # run the cross entropy using the modified logits
                     temp_loss = self.criterion(temp_logits, combined_targets)
                     # if the target of the sample is within the task append the cross entropy of that sample
+
+
+                    if self.get_loss == True:
+                        get_loss = temp_loss.clone().detach()
+                        stream_loss.append(get_loss[:10].mean(-1).item())
+                        if len(get_loss) > 10:
+                            replay_loss.append(get_loss[-10:].mean(-1).item())
+
+
                     for target_index in range(len(combined_targets)):
                         if combined_targets[target_index] in do_not_modify:
                             combined_loss.append(temp_loss[target_index])
+
                 combined_loss = torch.sum(torch.stack(combined_loss).to(self.device)) / len(combined_targets)
+
                 self.optimizer.zero_grad()
                 combined_loss.backward()
                 self.optimizer.step()
@@ -154,11 +169,19 @@ class Tiny(Base):
             print(iter_times)
             self.curr_task_iter_time.append(np.mean(np.array(iter_times)))
 
+            self.stream_losses.append(np.mean(np.array(stream_loss)))
+            self.replay_losses.append(np.mean(np.array(replay_loss)))
             
             if self.swap == True:
                 print("epoch {}, loss {}, num_swap {}".format(epoch, combined_loss.item(), self.swap_manager.get_num_swap()))
                 self.num_swap.append(self.swap_manager.get_num_swap())
                 self.swap_manager.reset_num_swap()
+
+                self.swap_manager.swap_class_dist = dict(sorted(self.swap_manager.swap_class_dist.items()))
+                f = open(self.result_save_path + self.filename + '_distribution.txt', 'a')
+                f.write("incremental_accuracy : "+str(self.swap_manager.swap_class_dist)+"\n")
+                f.close()
+                self.swap_manager.reset_swap_class_dist()
 
             
 
@@ -180,7 +203,7 @@ class Tiny(Base):
         self.soft_class_incremental_acc.append(curr_accuracy.item())
         print("c_incremental_accuracy : ", self.soft_class_incremental_acc)
 
-        curr_accuracy, task_accuracy, class_accuracy = self.task_eval()    
+        curr_accuracy, task_accuracy, class_accuracy = self.task_eval(get_entropy=self.get_test_entropy)    
         print("t_class_accuracy : ", class_accuracy)
         print("t_task_accuracy : ", task_accuracy)
         print("t_current_accuracy : ", curr_accuracy.item())
@@ -213,7 +236,7 @@ class Tiny(Base):
 
         print('======================================================================')
 
-    def task_eval(self):
+    def task_eval(self, get_entropy=False):
         test_dataloader = DataLoader(self.test_dataset, batch_size = 128, shuffle=False)
         self.model.eval()
         correct, total = 0, 0
@@ -221,6 +244,15 @@ class Tiny(Base):
         class_total = list(0. for i in range(self.classes_so_far))
         class_accuracy = list()
         task_accuracy = dict()
+        
+        if self.swap==True and get_entropy == True:
+            w_entropy_test = []
+            r_entropy_test = []
+
+            logits_list = []
+            labels_list = []
+
+
         for setp, (inputs, targets) in enumerate(test_dataloader):
             inputs, targets = inputs.to(self.device), targets.to(self.device)
             with torch.no_grad():
@@ -241,10 +273,42 @@ class Tiny(Base):
             c = (predicts.cpu() == targets.cpu()).squeeze()
             correct += (predicts.cpu() == targets.cpu()).sum()
             total += len(targets)
+
+
+            if self.swap==True and get_entropy == True:
+                r, w = self.get_entropy(logits, targets)
+                r_entropy_test.extend(r)
+                w_entropy_test.extend(w)
+                
+                logits_list.append(logits)
+                labels_list.append(targets)
+
+
             for i in range(targets.size(0)):
                 label = targets[i]
                 class_correct[label] += c[i].item()
                 class_total[label] += 1
+
+
+        if self.swap==True and get_entropy == True:
+            print("RECORD TEST ENTROPY!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            f = open(self.result_save_path + self.filename + '_correct_test_entropy.txt', 'a')
+            f.write(str(r_entropy_test)+"\n")
+            f.close()
+            
+            f = open(self.result_save_path + self.filename + '_wrong_test_entropy.txt', 'a')
+            f.write(str(r_entropy_test)+"\n")
+            f.close()
+
+            logits = torch.cat(logits_list).to(self.device)
+            labels = torch.cat(labels_list).to(self.device)
+
+            ece = self.ece_loss(logits, labels).item()
+            f = open(self.result_save_path + self.filename + '_ece_test.txt', 'a')
+            f.write(str(ece)+"\n")
+            f.close()
+
+                
         for i in range(len(class_correct)):
             if class_correct[i]==0 and class_total[i] == 0:
                 continue

@@ -1,0 +1,26 @@
+parameters:
+  agent_name: derpp_distill
+  alpha: 0.7
+  batch_size: 32
+  beta: 1.0
+  data_order: sorted
+  epochs: 100
+  filename: derpp_distill_0.7_
+  get_test_entropy: true
+  lr: 0.03
+  mode: disjoint
+  model: der_resnet
+  num_task_cls_per_task:
+  - 10
+  - 20
+  num_workers: 3
+  rb_path: /xxxxxxxxx/data/distill_imagenet
+  rb_size: 500
+  result_save_path: exp_results/derpp_distill
+  run: 1
+  sampling: reservoir_der
+  seed_start: 0
+  swap: true
+  swap_base: hybrid_balanced_p
+  test_set: tiny_imagenet
+  threshold: 0.5

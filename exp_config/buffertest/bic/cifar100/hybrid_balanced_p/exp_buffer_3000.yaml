@@ -1,0 +1,22 @@
+parameters:
+  agent_name: bic
+  batch_size: 128
+  data_order: fixed
+  epochs: 250
+  filename: buffer_3000
+  mode: disjoint
+  model: resnet32
+  num_task_cls_per_task:
+  - 10
+  - 10
+  num_workers: 2
+  rb_path: ../../data/cl_saved_data/buffertest/bic/cifar100/hybrid_balanced_p
+  rb_size: 3000
+  result_save_path: exp_results/buffertest/bic/cifar100/hybrid_balanced_p
+  run: 1
+  sampling: ringbuffer
+  seed_start: 0
+  swap: true
+  swap_base: hybrid_balanced_p
+  test_set: cifar100
+  threshold: 0.5

@@ -14,6 +14,7 @@ from agents.base import Base
 from _utils.sampling import sample_update_to_RB
 from lib import utils
 import time
+import gc
 
 import csv
 from dataset.dataloader import TinyContinualDataLoader, TinyReplayDataLoader
@@ -68,22 +69,41 @@ class DarkERPlus(Base):
         self.model.train()
         self.model.to(self.device)
 
+        self.stream_losses, self.replay_losses = list(), list()
+
         #print("length of replay dataset : ", len(self.replay_dataset))
+        self.replay_size = self.replay_dataset.rb_size
 
         if self.swap is True:
             self.swap_manager.before_train()
 
+
     def after_train(self):
+
+        self.img_sizes = []
+        
+        import sys
+        for inp in self.replay_dataset.data:
+            #print(inp.tobytes())
+            img_size = sys.getsizeof(inp.tobytes())
+            self.img_sizes.append(img_size)
+        print("=================================\n")
+        #print(self.img_sizes)
+        print("AVERAGE IMAGE SIZE : ", np.array(np.mean(self.img_sizes)))
+        print("=================================\n")
+
+
         self.model.eval()
         
-        """
-        f = open('loss/'+self.filename+'.txt', 'a')
+        
+        f = open(self.result_save_path + self.filename + '_loss.txt', 'a')
         f.write(str(self.loss_item)+"\n")
+        self.loss_item = []
         f.close()
-        """
+        
         
         f = open(self.result_save_path + self.filename + '_accuracy.txt', 'a')
-        curr_accuracy, task_accuracy, class_accuracy = self.eval()
+        curr_accuracy, task_accuracy, class_accuracy = self.eval(get_entropy=self.get_test_entropy)
         print("class_accuracy : ", class_accuracy)
         print("task_accuracy : ", task_accuracy)
         print("current_accuracy : ", curr_accuracy.item())
@@ -102,7 +122,16 @@ class DarkERPlus(Base):
         f.write("avg_iter_time : "+str(self.avg_iter_time)+"\n")
         f.close()
 
-        
+        if self.get_loss is True:
+            f = open(self.result_save_path + self.filename + '_replay_loss.txt','a')
+            f.write(str(self.replay_losses)+"\n")
+            f.close()
+
+            f = open(self.result_save_path + self.filename + '_stream_loss.txt','a')
+            f.write(str(self.stream_losses)+"\n")
+            f.close()
+
+
         
         
         if self.swap==True:
@@ -119,6 +148,7 @@ class DarkERPlus(Base):
 
 
         self.stream_dataset.clean_stream_dataset()
+        gc.collect()
 
     def expend_dim(self, logits, n_classes):
         zero_tensor = torch.zeros(n_classes-logits.shape[0]).to(logits.device)
@@ -139,6 +169,8 @@ class DarkERPlus(Base):
             # time measure            
             iter_times = []
             iter_st = None
+            stream_loss, replay_loss = [],[]
+            
             for i, (stream_idxs, stream_inputs, stream_targets) in enumerate(self.cl_dataloader):
                 
                 iter_en = time.perf_counter()
@@ -175,10 +207,14 @@ class DarkERPlus(Base):
                         #print("AFTER SWAP : ", swap_targets)
                         self.swap_manager.swap(swap_idx.tolist(), swap_targets.tolist(), swap_ids.tolist())
                     
+                    
                     #
                     # need to match output dimension
                     #
-                    loss += self.alpha * F.mse_loss(replay_outputs, replay_logits)
+                    replay_loss_1 = self.alpha * F.mse_loss(replay_outputs, replay_logits)
+
+                    
+                    loss += replay_loss_1
 
                     replay_idxs, replay_inputs, replay_targets, _, replay_ids = next(self.iter_r)
                     replay_inputs = replay_inputs.to(self.device)
@@ -186,11 +222,25 @@ class DarkERPlus(Base):
                     replay_outputs = self.model(replay_inputs)
 
                     if self.swap == True:
-                        swap_idx, swap_targets, swap_ids = self.swap_manager.swap_determine(replay_idxs, replay_outputs, replay_targets, replay_ids)
-                        self.swap_manager.swap(swap_idx.tolist(), swap_targets.tolist(), swap_ids.tolist())
+                        #if self.dynamic == True and epoch < (len(self.stream_dataset) * (self.tasks_so_far-1) / self.replay_size) * (1/self.swap_manager.threshold) * 5: # dynamic_ver. at least five epochs for all dataset
+                        if self.dynamic == True and epoch <= int(self.num_epochs * 0.5):
+                            #print("random")
+                            swap_idx, swap_targets, swap_ids  = self.swap_manager.random(replay_idxs, replay_outputs, replay_targets, replay_ids)
+                            self.swap_manager.swap(swap_idx.tolist(), swap_targets.tolist())
 
-                    loss += self.beta * self.criterion(replay_outputs, replay_targets)
+                        else:
+                            swap_idx, swap_targets, swap_ids = self.swap_manager.swap_determine(replay_idxs, replay_outputs, replay_targets, replay_ids)
+                            self.swap_manager.swap(swap_idx.tolist(), swap_targets.tolist(), swap_ids.tolist())
 
+                    replay_loss_2 = self.beta * self.criterion(replay_outputs, replay_targets)
+                    loss += replay_loss_2
+                    
+                    if self.get_loss == True:
+                        get_stream_loss = loss.clone().detach()
+                        get_replay_loss = replay_loss_1.clone().detach() + replay_loss_2.clone().detach()
+                        stream_loss.append(get_stream_loss.item())
+                        replay_loss.append(get_replay_loss.item())
+                    
 
                 self.opt.zero_grad()
                 loss.backward()
@@ -235,6 +285,8 @@ class DarkERPlus(Base):
             print("lr {}".format(self.opt.param_groups[0]['lr']))
             
             self.loss_item.append(loss.item())
+            self.stream_losses.append(np.mean(np.array(stream_loss)))
+            self.replay_losses.append(np.mean(np.array(replay_loss)))
 
             if self.swap == True:
                 print("epoch {}, loss {}, num_swap {}".format(epoch, loss.item(), self.swap_manager.get_num_swap()))
@@ -243,7 +295,9 @@ class DarkERPlus(Base):
             else:
                 print("epoch {}, loss {}".format(epoch, loss.item()))
             #print("time {}".format(en-st))
-    def eval(self):
+    
+    def eval(self, get_entropy=False):
+        
         self.model.eval()
         test_dataloader = DataLoader(self.test_dataset, batch_size = 128, shuffle=False)
         
@@ -252,11 +306,30 @@ class DarkERPlus(Base):
         class_total = list(0. for i in range(self.classes_so_far))
         class_accuracy = list()
         task_accuracy = dict()
+        
+        if self.swap==True and get_entropy == True:
+            w_entropy_test = []
+            r_entropy_test = []
+
+            logits_list = []
+            labels_list = []
 
         for setp, ( imgs, labels) in enumerate(test_dataloader):
             imgs, labels = imgs.to(self.device), labels.to(self.device)
             with torch.no_grad():
-                outputs = self.model(imgs) 
+                outputs = self.model(imgs)
+            
+            
+            #get entropy of testset
+            if self.swap==True and get_entropy == True:
+                r, w = self.get_entropy(outputs, labels)
+                r_entropy_test.extend(r)
+                w_entropy_test.extend(w)
+                
+                logits_list.append(outputs)
+                labels_list.append(labels)
+
+            
             predicts = torch.max(outputs, dim=1)[1] 
             c = (predicts.cpu() == labels.cpu()).squeeze()
 
@@ -284,5 +357,26 @@ class DarkERPlus(Base):
 
         total_accuracy = 100 * correct / total
         self.model.train()
+
+        
+        if self.swap==True and get_entropy == True:
+            print("RECORD TEST ENTROPY!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            f = open(self.result_save_path + self.filename + '_correct_test_entropy.txt', 'a')
+            f.write(str(r_entropy_test)+"\n")
+            f.close()
+            
+            f = open(self.result_save_path + self.filename + '_wrong_test_entropy.txt', 'a')
+            f.write(str(r_entropy_test)+"\n")
+            f.close()
+
+            
+            logits = torch.cat(logits_list).to(self.device)
+            labels = torch.cat(labels_list).to(self.device)
+
+            ece = self.ece_loss(logits, labels).item()
+            f = open(self.result_save_path + self.filename + '_ece_test.txt', 'a')
+            f.write(str(ece)+"\n")
+            f.close()
+            
+
         return total_accuracy, task_accuracy, class_accuracy
-    

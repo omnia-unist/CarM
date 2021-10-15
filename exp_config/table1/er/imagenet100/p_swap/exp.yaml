@@ -8,7 +8,7 @@ parameters:
   num_task_cls_per_task:
   - 10
   - 10
-  num_workers: 1
+  num_workers: 3
   rb_path: /data/cl_saved_data/table1/er/imagenet100/p_swap
   rb_size: 2000
   result_save_path: exp_results/table1/er/imagenet100/p_swap
@@ -16,6 +16,6 @@ parameters:
   sampling: ringbuffer
   seed_start: null
   swap: true
-  swap_base: hybrid_ratio
+  swap_base: hybrid_balanced_p
   test_set: imagenet100
   threshold: 0.5

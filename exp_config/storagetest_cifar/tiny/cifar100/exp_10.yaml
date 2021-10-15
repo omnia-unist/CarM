@@ -1,0 +1,23 @@
+parameters:
+  agent_name: tiny
+  batch_size: 10
+  data_order: seed
+  epochs: 1
+  filename: store_ratio_10_sample_
+  mode: disjoint
+  model: tiny_resnet
+  num_task_cls_per_task:
+  - 20
+  - 5
+  num_workers: 2
+  rb_path: ../../data/cl_saved_data/storagetest_cifar/tiny/cifar100
+  rb_size: 300
+  result_save_path: exp_results/storagetest_cifar/tiny/cifar100
+  run: 1
+  sampling: reservoir
+  seed_start: 1234
+  store_ratio: 10 #0.0753
+  swap: true
+  swap_base: hybrid_ratio
+  test_set: cifar100
+  threshold: 0.5
