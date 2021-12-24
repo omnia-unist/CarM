@@ -1,15 +1,17 @@
-name: pytorch
+name: CarM
 channels:
   - pytorch
   - defaults
 dependencies:
   - _libgcc_mutex=0.1=main
+  - astroid=2.5=py38h06a4308_1
   - backcall=0.2.0=pyhd3eb1b0_0
   - blas=1.0=mkl
   - brotlipy=0.7.0=py38h27cfd23_1003
-  - ca-certificates=2021.5.25=h06a4308_1
-  - certifi=2021.5.30=py38h06a4308_0
+  - ca-certificates=2021.10.26=h06a4308_2
+  - certifi=2021.10.8=py38h06a4308_0
   - cffi=1.14.5=py38h261ae71_0
+  - chardet=4.0.0=py38h06a4308_1003
   - click=7.1.2=pyhd3eb1b0_0
   - cloudpickle=1.6.0=py_0
   - cryptography=3.3.1=py38h3c74f83_0
@@ -31,9 +33,11 @@ dependencies:
   - imageio=2.9.0=py_0
   - intel-openmp=2020.2=254
   - ipykernel=5.3.4=py38h5ca1d4c_0
+  - ipython=7.29.0=py38hb070fc8_0
   - ipython_genutils=0.2.0=pyhd3eb1b0_1
   - isort=5.8.0=pyhd3eb1b0_0
   - itsdangerous=1.1.0=pyhd3eb1b0_0
+  - jedi=0.18.0=py38h06a4308_1
   - jinja2=2.11.3=pyhd3eb1b0_0
   - joblib=1.0.1=pyhd3eb1b0_0
   - jpeg=9b=h024ee3a_2
@@ -55,10 +59,12 @@ dependencies:
   - libuv=1.40.0=h7b6447c_0
   - libxcb=1.14=h7b6447c_0
   - libxml2=2.9.10=hb55368b_3
+  - line_profiler=2.1.2=py38h7b6447c_0
   - lz4-c=1.9.2=heb0550a_3
   - markupsafe=1.1.1=py38h7b6447c_0
   - matplotlib=3.3.2=h06a4308_0
   - matplotlib-base=3.3.2=py38h817c723_0
+  - matplotlib-inline=0.1.2=pyhd3eb1b0_2
   - mccabe=0.6.1=py38_1
   - mkl=2020.2=256
   - mkl-service=2.3.0=py38he904b0f_0
@@ -70,7 +76,7 @@ dependencies:
   - numpy=1.19.2=py38h54aff64_0
   - numpy-base=1.19.2=py38hfa32c7d_0
   - olefile=0.46=py_0
-  - openssl=1.1.1k=h27cfd23_0
+  - openssl=1.1.1l=h7f8727e_0
   - pandas=1.2.1=py38ha9443f7_0
   - parso=0.8.1=pyhd3eb1b0_0
   - pcre=8.44=he6710b0_0
@@ -78,6 +84,7 @@ dependencies:
   - pickleshare=0.7.5=pyhd3eb1b0_1003
   - pillow=8.2.0=py38he98fc37_0
   - pip=20.3.3=py38h06a4308_0
+  - prompt-toolkit=3.0.20=pyhd3eb1b0_0
   - psutil=5.8.0=py38h27cfd23_1
   - ptyprocess=0.7.0=pyhd3eb1b0_2
   - pycparser=2.20=py_2
@@ -99,6 +106,7 @@ dependencies:
   - requests=2.25.1=pyhd3eb1b0_0
   - scikit-image=0.17.2=py38hdf5156a_0
   - scikit-learn=0.23.2=py38h0573a6f_0
+  - scipy=1.6.2=py38h91f5cce_0
   - seaborn=0.11.1=pyhd3eb1b0_0
   - setuptools=51.0.0=py38h06a4308_2
   - sip=4.19.13=py38he6710b0_0
@@ -125,79 +133,6 @@ dependencies:
   - zlib=1.2.11=h7b6447c_3
   - zstd=1.4.5=h9ceee32_0
   - pip:
-    - absl-py==0.12.0
-    - altair==4.1.0
-    - astroid==2.5.6
-    - attrs==21.2.0
-    - blitzdb==0.4.4
-    - cachetools==4.2.2
-    - chardet==3.0.4
-    - checkmate==0.2.0
-    - cython==0.29.23
-    - dfgraph==0.1.3
     - directio==1.2
-    - easydict==1.9
-    - entrypoints==0.3
-    - gensim==3.0.0
-    - gevent==21.1.2
-    - google-auth==1.30.0
-    - google-auth-oauthlib==0.4.4
-    - googledrivedownloader==0.4
-    - googletrans==3.0.0
-    - greenlet==1.0.0
-    - grpcio==1.38.0
-    - gym==0.18.3
-    - h11==0.9.0
-    - h2==3.2.0
-    - hpack==3.0.0
-    - hstspreload==2021.7.5
-    - httpcore==0.9.1
-    - httpx==0.13.3
-    - hyperframe==5.2.0
-    - ipython==7.19.0
-    - jedi==0.18.0
-    - jsonschema==3.2.0
-    - kaggle==1.5.12
-    - line-profiler==3.1.0
-    - markdown==3.3.4
-    - nltk==3.6.2
-    - oauthlib==3.1.0
-    - overrides==6.1.0
-    - pep8==1.7.1
-    - plotinpy==0.1.1
-    - prompt-toolkit==3.0.10
-    - protobuf==3.17.0
-    - pyasn1==0.4.8
-    - pyasn1-modules==0.2.8
-    - pyflakes==2.3.1
-    - pyglet==1.5.15
-    - pyrsistent==0.17.3
-    - python-graphviz==0.16
-    - python-slugify==5.0.2
-    - pytorch-ranger==0.1.1
-    - quadprog==0.1.8
     - randaugment==1.0.2
-    - redis==3.5.3
-    - regex==2021.7.6
-    - requests-oauthlib==1.3.0
-    - rfc3986==1.5.0
-    - rsa==4.7.2
-    - scipy==1.7.0
-    - service-streamer==0.1.2
-    - smart-open==5.1.0
-    - sniffio==1.2.0
-    - sqlalchemy==1.4.15
-    - tensorboard==2.5.0
-    - tensorboard-data-server==0.6.1
-    - tensorboard-plugin-wit==1.8.0
-    - text-unidecode==1.3
-    - textaugment==1.3.4
-    - textblob==0.15.3
-    - torch-optimizer==0.1.0
-    - tqdm==4.56.1
-    - typing-utils==0.1.0
-    - wget==3.2
-    - zope-event==4.5.0
-    - zope-interface==5.2.0
-prefix: /home/xxxxxxxxx/anaconda3/envs/pytorch
-
+prefix: /home/supersoob/anaconda3/envs/CarM
