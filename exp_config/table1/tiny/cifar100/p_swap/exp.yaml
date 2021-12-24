@@ -10,7 +10,7 @@ parameters:
   - 5
   num_workers: 2
   swap_workers: 0
-  rb_path: ../../data/cl_saved_data/table1/tiny/cifar100/p_swap_b_p
+  rb_path: ./data/cl_saved_data/table1/tiny/cifar100/p_swap_b_p
   rb_size: 300
   result_save_path: exp_results/table1/tiny/cifar100/p_swap
   run: 1

@@ -9,9 +9,9 @@ parameters:
   - 20
   - 5
   num_workers: 2
-  rb_path: /data/cl_saved_data/table1/tiny/cifar100/swap
+  rb_path: ./data/cl_saved_data/table1/tiny/cifar100/swap
   rb_size: 300
-  result_save_path: /home/xxxxxxxxx/swap_replay/streaming/exp_results/table1/tiny/cifar100/swap
+  result_save_path: ./exp_results/table1/tiny/cifar100/swap
   run: 5
   sampling: reservoir
   seed_start: 1234

@@ -12,7 +12,7 @@ parameters:
   - 10
   - 20
   num_workers: 2
-  rb_path: /data/cl_saved_data/table1/derpp/tiny_imagenet/p_swap
+  rb_path: ./data/cl_saved_data/table1/derpp/tiny_imagenet/p_swap
   rb_size: 500
   result_save_path: exp_results/table1/derpp/tiny_imagenet/p_swap
   run: 3

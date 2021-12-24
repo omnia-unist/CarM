@@ -10,7 +10,7 @@ parameters:
   - 2
   num_workers: 2
   rb_size: 500
-  result_save_path: /home/xxxxxxxxx/swap_replay/streaming/exp_results/table1/gdumb/cifar10/no_swap
+  result_save_path: ./exp_results/table1/gdumb/cifar10/no_swap
   run: 5
   sampling: greedy_balance
   seed_start: 0

@@ -9,9 +9,9 @@ parameters:
   - 5
   - 2
   num_workers: 2
-  rb_path: /data/cl_saved_data/table1/gdumb/cifar10/swap
+  rb_path: ./data/cl_saved_data/table1/gdumb/cifar10/swap
   rb_size: 500
-  result_save_path: /home/xxxxxxxxx/swap_replay/streaming/exp_results/table1/rm/cifar10/swap
+  result_save_path: ./exp_results/table1/rm/cifar10/swap
   run: 5
   sampling: greedy_balance
   seed_start: 0

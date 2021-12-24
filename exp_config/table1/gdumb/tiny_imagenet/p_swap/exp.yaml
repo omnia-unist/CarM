@@ -9,7 +9,7 @@ parameters:
   - 10
   - 20
   num_workers: 3
-  rb_path: /ssd/data/cl_saved_data/table1/gdumb/tiny_imagenet/p_swap
+  rb_path: ./data/cl_saved_data/table1/gdumb/tiny_imagenet/p_swap
   rb_size: 4500
   result_save_path: exp_results/table1/gdumb/tiny_imagenet/p_swap
   run: 3

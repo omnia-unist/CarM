@@ -13,7 +13,7 @@ parameters:
   - 10
   - 20
   num_workers: 3
-  rb_path: /xxxxxxxxx/data/distill_imagenet
+  rb_path: ./data/distill_imagenet
   rb_size: 500
   result_save_path: exp_results/derpp_distill
   run: 1

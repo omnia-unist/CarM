@@ -11,7 +11,7 @@ parameters:
   - 20
   - 5
   num_workers: 3
-  rb_path: /data/cl_saved_data/policytest_imagenet/tiny/mini_imagenet/random
+  rb_path: ./data/cl_saved_data/policytest_imagenet/tiny/mini_imagenet/random
   rb_size: 500
   result_save_path: exp_results/policytest_imagenet/tiny/mini_imagenet/random
   run: 10

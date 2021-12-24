@@ -14,7 +14,7 @@ parameters:
   - 20
   num_workers: 3
   rb_size: 500
-  result_save_path: /home/xxxxxxxxx/swap_replay/streaming/exp_results/table1/derpp/tiny_imagenet/no_swap
+  result_save_path: ./exp_results/table1/derpp/tiny_imagenet/no_swap
   run: 3
   sampling: reservoir_der
   seed_start: 2

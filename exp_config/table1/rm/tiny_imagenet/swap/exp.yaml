@@ -9,9 +9,9 @@ parameters:
   - 10
   - 20
   num_workers: 2
-  rb_path: /data/cl_saved_data/table1/rm/tiny_imagenet/swap
+  rb_path: ./data/cl_saved_data/table1/rm/tiny_imagenet/swap
   rb_size: 4500
-  result_save_path: /home/xxxxxxxxx/swap_replay/streaming/exp_results/table1/rm/tiny_imagenet/swap
+  result_save_path: ./exp_results/table1/rm/tiny_imagenet/swap
   run: 3
   sampling: greedy_balance
   task_inc: True

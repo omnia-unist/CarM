@@ -12,7 +12,7 @@ parameters:
   - 10
   - 20
   num_workers: 3
-  rb_path: ../../data/cl_saved_data/policytest_imagenet/rm/tiny_imagenet/dynamic
+  rb_path: ./data/cl_saved_data/policytest_imagenet/rm/tiny_imagenet/dynamic
   rb_size: 4500
   result_save_path: exp_results/policytest_imagenet/rm/tiny_imagenet/dynamic
   run: 3

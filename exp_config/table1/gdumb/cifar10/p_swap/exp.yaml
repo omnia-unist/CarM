@@ -9,7 +9,7 @@ parameters:
   - 5
   - 2
   num_workers: 2
-  rb_path: /data/cl_saved_data/table1/gdumb/cifar10/p_swap
+  rb_path: ./data/cl_saved_data/table1/gdumb/cifar10/p_swap
   rb_size: 500
   result_save_path: exp_results/table1/gdumb/cifar10/p_swap
   run: 5

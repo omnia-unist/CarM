@@ -10,7 +10,7 @@ parameters:
   - 10
   - 10
   num_workers: 2
-  rb_path: ../../data/cl_saved_data/buffertest/icarl/cifar100/hybrid_ratio
+  rb_path: ./data/cl_saved_data/buffertest/icarl/cifar100/hybrid_ratio
   rb_size: 3000
   result_save_path: exp_results/buffertest/icarl/cifar100/hybrid_ratio
   run: 1
