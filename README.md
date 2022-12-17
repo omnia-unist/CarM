@@ -11,12 +11,12 @@
 
 
 ### Abstract
-Continual Learning (CL) is an emerging machine learning paradigm in mobile or IoT devices that learns from a continuous stream of tasks. To avoid forgetting of knowledge of the previous tasks, episodic memory (EM) methods exploit a subset of the past samples while learning from new data. Despite the promising results, prior studies are mostly simulation-based and unfortunately do not promise to meet an insatiable demand for both EM capacity and system efficiency in practical system setups. We propose CarM, the first CL framework that meets the demand by a novel hierarchical EM management strategy. CarM has EM on high-speed RAMs for system efficiency and exploits the abundant storage to preserve past experiences and alleviate the forgetting by allowing CL to efficiently migrate samples between memory and storage. Extensive evaluations show that our method significantly outperforms popular CL methods while providing high training efficiency.
-
-
+-------------
+Continual Learning (CL) is an emerging machine learning paradigm in mobile or IoT devices that learns from a continuous stream of tasks. To avoid forgetting of knowledge of the previous tasks, episodic memory (EM) methods exploit a subset of the past samples while learning from new data. Despite the promising results, prior studies are mostly simulation-based and unfortunately do not promise to meet an insatiable demand for both EM capacity and system efficiency in practical system setups. We propose CarM, the first CL framework that meets the demand by a novel hierarchical EM management strategy. CarM has EM on high-speed RAMs for system efficiency and exploits the abundant storage to preserve past experiences and alleviate the forgetting by allowing CL to efficiently migrate samples between memory and storage. Extensive evaluations show that our method significantly outperforms popular CL methods while providing high training efficiency.   
 
 
 ### Installation
+-------------
 - pytorch 1.7.1
 - torchvision 0.8.2
 - python 3.8.
@@ -24,22 +24,20 @@ Continual Learning (CL) is an emerging machine learning paradigm in mobile or Io
 requirements for Anaconda is provided. We recommend to run CarM in conda env.
 ```
 conda install --name carm --file requirements.yaml
-```
-
-
+```   
 
 
 ### Test Command Line
+-------------
 ```
 python main.py --config=my/config/file/path
 ```
 ```results``` folder will be created automatically, which statistics of accuracy, losses and training time of each task are recorded.
-Note that configuration files are in ```exp_config``` folder which enable to reproduce results in the original paper.
-
-
+Note that configuration files are in ```exp_config``` folder which enable to reproduce results in the original paper.   
 
 
 ### Citation
+-------------
 ```
 @inproceedings{10.1145/3489517.3530587,
     author = {Lee, Soobee and Weerakoon, Minindu and Choi, Jonghyun and Zhang, Minjia and Wang, Di and Jeon, Myeongjae},
@@ -50,12 +48,11 @@ Note that configuration files are in ```exp_config``` folder which enable to rep
     doi = {10.1145/3489517.3530587},
     booktitle = {Proceedings of the 59th ACM/IEEE Design Automation Conference}
 }
-```
-
-
+```   
 
 
 ### References
+-------------
 + https://github.com/aimagelab/mammoth
 + https://github.com/drimpossible/GDumb
 + https://github.com/arthurdouillard/incremental_learning.pytorch
