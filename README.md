@@ -54,13 +54,13 @@ Citation
 
 References
 -------------
-+ https://github.com/aimagelab/mammoth
-+ https://github.com/drimpossible/GDumb
-+ https://github.com/arthurdouillard/incremental_learning.pytorch
-+ https://github.com/wuyuebupt/LargeScaleIncrementalLearning
-+ https://github.com/zhchuu/continual-learning-reproduce
-+ https://github.com/clovaai/rainbow-memory
-+ https://github.com/facebookresearch/agem
-+ https://github.com/facebookresearch/GradientEpisodicMemory
-+ https://github.com/srebuffi/iCaRL
-+ https://github.com/DRSAD/iCaRL
+- https://github.com/aimagelab/mammoth
+- https://github.com/drimpossible/GDumb
+- https://github.com/arthurdouillard/incremental_learning.pytorch
+- https://github.com/wuyuebupt/LargeScaleIncrementalLearning
+- https://github.com/zhchuu/continual-learning-reproduce
+- https://github.com/clovaai/rainbow-memory
+- https://github.com/facebookresearch/agem
+- https://github.com/facebookresearch/GradientEpisodicMemory
+- https://github.com/srebuffi/iCaRL
+- https://github.com/DRSAD/iCaRL
