@@ -21,7 +21,7 @@ Installation
 - pytorch 1.7.1
 - torchvision 0.8.2
 - python 3.8.
-- numpy 1.19.2
+- numpy 1.19.2   
 requirements for Anaconda is provided. We recommend to run CarM in conda env.
 ```
 conda install --name carm --file requirements.yaml
