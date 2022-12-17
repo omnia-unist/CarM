@@ -1,9 +1,10 @@
-## Carousel Memory(CarM) - Official Pytorch Implementation
+Carousel Memory(CarM) - Official Pytorch Implementation
+============
 
 #### **Official Pytorch implementation of Carousel Memory (CarM)**, accepted at **DAC 2022**
 
 
-<img src="./figs/workflow_figure.png" alt="drawing" width="1000"/>
+<img src="./figs/workflow_figure.png" alt="drawing" width="900"/>
 
 [Paper](https://dl.acm.org/doi/10.1145/3489517.3530587) | [Extended](https://arxiv.org/abs/2110.07276) | [Slide]()
 
