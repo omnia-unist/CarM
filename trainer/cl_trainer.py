@@ -13,11 +13,11 @@ import threading
 import time
 
 from agents import *
-from _utils.data_manager import DataManager
-from dataset.test import get_test_set
-from dataset.stream import StreamDataset, MultiTaskStreamDataset
-from dataset.replay import ReplayDataset
-from dataset.dataloader import ContinualDataLoader, ConcatContinualDataLoader
+from utils.data_manager import DataManager
+from datasets.test import get_test_set
+from datasets.stream import StreamDataset, MultiTaskStreamDataset
+from datasets.replay import ReplayDataset
+from datasets.dataloader import ContinualDataLoader, ConcatContinualDataLoader
 from lib.swap_manager import SwapManager
 
 class Continual(object):

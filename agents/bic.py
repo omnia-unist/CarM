@@ -12,13 +12,13 @@ import copy
 
 import os
 from agents.base import Base
-from _utils.sampling import multi_task_sample_update_to_RB
+from utils.sampling import multi_task_sample_update_to_RB
 from lib import utils
 import gc
 import math
 import time
 
-from dataset.validate import ValidateDataset
+from datasets.validate import ValidateDataset
 
 class SplitedStreamDataset(Dataset):
     def __init__(self, data, targets, ac_idx=None):

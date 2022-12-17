@@ -2,13 +2,13 @@ from torch.utils.data import Dataset, IterableDataset, ConcatDataset, DataLoader
 from itertools import cycle
 from torch.utils.data import Dataset
 from torchvision import transforms
-from dataset.concat import ConcatDataset, GDumbDataset
+from datasets.concat import ConcatDataset, GDumbDataset
 import os
 from PIL import Image
 import numpy as np
 import torch
 import random
-from _utils.sampling import sample_update_to_RB
+from utils.sampling import sample_update_to_RB
 
 
 from lib.swap_manager import SwapManager

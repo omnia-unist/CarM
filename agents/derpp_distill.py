@@ -11,13 +11,13 @@ from array import array
 
 import os
 from agents.base import Base
-from _utils.sampling import sample_update_to_RB
+from utils.sampling import sample_update_to_RB
 from lib import utils
 import time
 import gc
 
 import csv
-from dataset.dataloader import TinyContinualDataLoader, TinyReplayDataLoader
+from datasets.dataloader import TinyContinualDataLoader, TinyReplayDataLoader
 
 class DarkERPlus_distill(Base):
     def __init__(self, model, opt_name, lr, lr_schedule, lr_decay, device, num_epochs, swap,

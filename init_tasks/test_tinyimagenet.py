@@ -5,20 +5,18 @@ import numpy as np
 from PIL import Image
 
 from torchvision import transforms
-from set_dataset import Continual
+from trainer import Continual
 import sys
 from types import SimpleNamespace
 import yaml
 import argparse
 import os
 import torch
-import pickle
 
 import random
 
-import os
 
-class MiniImagenet(Dataset):
+class TinyImagenet(Dataset):
     """
     Defines Tiny Imagenet as for the others pytorch datasets.
     """
@@ -31,39 +29,34 @@ class MiniImagenet(Dataset):
         self.target_transform = target_transform
         self.download = download
 
+        if download:
+            from google_drive_downloader import GoogleDriveDownloader as gdd
+            # https://drive.google.com/file/d/1Sy3ScMBr0F4se8VZ6TAwDYF-nNGAAdxj/view
+            print('Downloading dataset')
+            gdd.download_file_from_google_drive(
+                file_id='1Sy3ScMBr0F4se8VZ6TAwDYF-nNGAAdxj',
+                dest_path=os.path.join(root, 'tiny-imagenet-processed.zip'),
+                unzip=True)
+
         self.data = []
+        for num in range(20):
+            self.data.append(np.load(os.path.join(
+                root, 'processed/x_%s_%02d.npy' %
+                      ('train' if self.train else 'val', num+1))))
+        self.data = np.concatenate(np.array(self.data))
+
         self.targets = []
+        for num in range(20):
+            self.targets.append(np.load(os.path.join(
+                root, 'processed/y_%s_%02d.npy' %
+                      ('train' if self.train else 'val', num+1))))
+        self.targets = np.concatenate(np.array(self.targets))
 
         self.TrainData = []
         self.TrainLabels = []
-
-        train_in = open(root+"/mini_imagenet/mini-imagenet-cache-train.pkl", "rb")
-        train = pickle.load(train_in)
-        train_x = train["image_data"].reshape([64, 600, 84, 84, 3])
-        val_in = open(root+"/mini_imagenet/mini-imagenet-cache-val.pkl", "rb")
-        val = pickle.load(val_in)
-        val_x = val['image_data'].reshape([16, 600, 84, 84, 3])
-        test_in = open(root+"/mini_imagenet/mini-imagenet-cache-test.pkl", "rb")
-        test = pickle.load(test_in)
-        test_x = test['image_data'].reshape([20, 600, 84, 84, 3])
-        all_data = np.vstack((train_x, val_x, test_x))
-
-        TEST_SPLIT = 1 / 6
-
-        train_data = []
-        train_label = []
-
-        for i in range(len(all_data)):
-            cur_x = all_data[i]
-            cur_y = np.ones((600,)) * i
-            x_train = cur_x[int(600 * TEST_SPLIT):]
-            y_train = cur_y[int(600 * TEST_SPLIT):]
-            train_data.append(x_train)
-            train_label.append(y_train)
-
-        self.data = np.concatenate(train_data)
-        self.targets = np.concatenate(train_label)
-
+        self.TestData = []
+        self.TestLabels = []
+    
     def concatenate(self,datas,labels):
         con_data=datas[0]
         con_label=labels[0]
@@ -84,7 +77,7 @@ class MiniImagenet(Dataset):
         return len(self.TrainData)
 
     def __getitem__(self, index):
-        img, target = Image.fromarray(self.TrainData[index]), self.TrainLabels[index]
+        img, target = Image.fromarray(np.uint8(255 * self.TrainData[index])), self.TrainLabels[index]
         return img,target
 
 
@@ -106,13 +99,19 @@ def experiment(final_params):
         if num_run == 0 and hasattr(final_params, 'rb_path'):
             org_rb_path = final_params.rb_path
             print(final_params.rb_path)
-        
+
         if hasattr(final_params, 'rb_path'):
             final_params.rb_path = org_rb_path + '/' + f'{final_params.filename}'
             os.makedirs(final_params.rb_path, exist_ok=True)
 
             print(final_params.rb_path)
         print(final_params.filename)
+
+        
+        
+        if hasattr(final_params, 'result_save_path'):
+            os.makedirs(final_params.result_save_path, exist_ok=True)
+            print(final_params.result_save_path)
 
 
         
@@ -131,23 +130,17 @@ def experiment(final_params):
                 
                 final_params.seed = seed
 
-        
-        if hasattr(final_params, 'result_save_path'):
-            os.makedirs(final_params.result_save_path, exist_ok=True)
-            print(final_params.result_save_path)
-
-
         num_task = final_params.num_task_cls_per_task[0]
         num_classes_per_task = final_params.num_task_cls_per_task[1]
 
-        class_order = np.arange(100)
+        class_order = np.arange(200)
 
         if final_params.data_order == 'seed':
             np.random.shuffle(class_order)
 
         print(class_order)
 
-        dataset = MiniImagenet('/data')
+        dataset = TinyImagenet('/data')
 
         
         continual = Continual(**vars(final_params))

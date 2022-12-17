@@ -7,7 +7,7 @@ import torch
 import random
 from types import SimpleNamespace
 
-import test_cifar10, test_cifar100, test_imagenet100, test_imagenet1000, test_tinyimagenet, test_miniimagenet
+from init_tasks import test_cifar10, test_cifar100, test_imagenet100, test_imagenet1000, test_tinyimagenet, test_miniimagenet
 
 
 def load_yaml(path, key='parameters'):

@@ -13,12 +13,12 @@ from collections import OrderedDict
 import csv
 import os
 from agents.base import Base
-from _utils.sampling import multi_task_sample_update_to_RB
+from utils.sampling import multi_task_sample_update_to_RB
 from lib import utils
 from scipy.spatial.distance import cdist
-from dataset.dataloader import AserDataLoader, TinyReplayDataLoader
+from datasets.dataloader import AserDataLoader, TinyReplayDataLoader
 import time
-from dataset.test import get_test_set
+from datasets.test import get_test_set
 
 
 class Tiny(Base):

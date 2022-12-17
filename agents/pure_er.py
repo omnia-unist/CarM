@@ -11,7 +11,7 @@ import copy
 
 import os
 from agents.base import Base
-from _utils.sampling import multi_task_sample_update_to_RB
+from utils.sampling import multi_task_sample_update_to_RB
 from lib import utils
 
 import math

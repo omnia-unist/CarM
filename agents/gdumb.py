@@ -10,11 +10,11 @@ import copy
 
 import os
 from agents.base import Base
-from _utils.sampling import multi_task_sample_update_to_RB
+from utils.sampling import multi_task_sample_update_to_RB
 from lib import utils
 from scipy.spatial.distance import cdist
 import time
-from dataset.dataloader import GDumbDataLoader
+from datasets.dataloader import GDumbDataLoader
 
 import csv
 import gc

@@ -4,8 +4,8 @@ from PIL import Image
 import os
 import io
 
-from set_dataset import Continual
-#from streaming.set_dataset import *
+from trainer import Continual
+#from streaming.trainer import *
 
 app = Flask(__name__)
 
