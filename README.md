@@ -18,7 +18,7 @@ Continual Learning (CL) is an emerging machine learning paradigm in mobile or Io
 
 Installation
 -------------
-requirements for Anaconda is provided. We recommend to run CarM in conda env.   
+Requirements for Anaconda is provided. We recommend to run CarM in conda env.   
 - pytorch 1.7.1
 - torchvision 0.8.2
 - python 3.8.
