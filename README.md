@@ -6,7 +6,7 @@ Carousel Memory(CarM) - Official Pytorch Implementation
 
 <img src="./figs/workflow_figure.png" alt="drawing" width="900"/>
 
-[Paper](https://dl.acm.org/doi/10.1145/3489517.3530587) | [Extended](https://arxiv.org/abs/2110.07276) | [Slide]()
+[Paper](https://dl.acm.org/doi/10.1145/3489517.3530587) | [Extended](https://arxiv.org/abs/2110.07276) | [Slide](./figs/CARM_DAC_SLIDES.pdf)
 
 
 
